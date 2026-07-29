@@ -1,10 +1,4 @@
-import type { EventHandler, RouteOptions } from 'h3'
-
-/**
- * Standard HTTP methods supported by the server.
- * These methods correspond to the common RESTful API operations.
- */
-type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+import type { HTTPHandler, HTTPMethod, RouteOptions } from 'h3'
 
 /**
  * Special HTTP method constant that matches all HTTP methods.
@@ -13,39 +7,46 @@ type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 type AllHTTPMethod = 'ALL'
 
 /**
- * Configuration object for a route handler with additional options.
- * Allows you to specify route-specific behaviors like lazy loading.
+ * HTTP methods supported by route configuration.
  */
-interface RouteHandlerConfig {
-  options?: RouteOptions
-  handler: EventHandler
-}
+type RouteMethod = HTTPMethod | AllHTTPMethod
 
 /**
- * A route handler can be either a simple H3 event handler function
- * or a configuration object with handler and options.
+ * An H3 HTTP handler with route options at the same level.
  */
-type RouteHandler = EventHandler | RouteHandlerConfig
+type RouteHandlerConfig = {
+  handler: HTTPHandler
+} & RouteOptions
+
+/**
+ * A route handler can be any handler accepted by H3 or a configuration object
+ * with a handler and route options.
+ */
+type RouteHandler = HTTPHandler | RouteHandlerConfig
+
+/**
+ * Makes at least one property from a configuration type required.
+ */
+type RequireAtLeastOne<T> = {
+  [Key in keyof T]-?: Required<Pick<T, Key>> & Partial<Omit<T, Key>>
+}[keyof T]
 
 /**
  * Configuration object for defining routes with specific HTTP methods.
- * Supports all standard HTTP methods and nested child routes.
+ * Supports every HTTP method exposed by H3 and nested child routes.
  */
-interface RouteConfig {
-  GET?: RouteHandler
-  POST?: RouteHandler
-  PUT?: RouteHandler
-  PATCH?: RouteHandler
-  DELETE?: RouteHandler
-  children?: Routes
-}
+type RouteConfig = RequireAtLeastOne<
+  Partial<Record<RouteMethod, RouteHandler>> & {
+    children?: Routes
+  }
+>
 
 /**
  * Routes definition object mapping URL paths to handlers or configurations.
  *
  * - Keys are URL paths (can include parameters like `/:id`)
  * - Values can be:
- *   - A simple handler function (handles all HTTP methods)
+ *   - A direct HTTPHandler (handles GET requests)
  *   - A RouteConfig object (defines method-specific handlers)
  */
 interface Routes {
@@ -58,17 +59,19 @@ interface Routes {
  */
 interface ParsedRoute {
   route: string
-  method: HTTPMethod | AllHTTPMethod
-  handler: EventHandler
+  method: RouteMethod
+  handler: HTTPHandler
   options?: RouteOptions
 }
 
+export type { HTTPHandler, HTTPMethod } from 'h3'
+
 export type {
   AllHTTPMethod,
-  HTTPMethod,
   ParsedRoute,
   RouteConfig,
   RouteHandler,
   RouteHandlerConfig,
+  RouteMethod,
   Routes
 }

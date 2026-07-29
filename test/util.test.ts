@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  buildServerUrl,
-  isEmptyArray,
-  isHandlerConfig,
-  isObject,
-  joinPaths
-} from '../src/util'
+import { isEmptyArray, isObject, joinPaths } from '../src/util'
 
 describe('util', () => {
   describe('isObject', () => {
@@ -73,67 +67,6 @@ describe('util', () => {
     it('should join multiple path segments', () => {
       expect(joinPaths('/api', 'v1', 'users', 'list')).toBe(
         '/api/v1/users/list'
-      )
-    })
-  })
-
-  describe('isHandlerConfig', () => {
-    it('should return true for objects with handler function', () => {
-      const config = { handler: () => {} }
-      expect(isHandlerConfig(config)).toBe(true)
-    })
-
-    it('should return true for objects with handler and other properties', () => {
-      const config = { handler: () => {}, route: '/api' }
-      expect(isHandlerConfig(config)).toBe(true)
-    })
-
-    it('should return false for objects without handler', () => {
-      expect(isHandlerConfig({ route: '/api' })).toBe(false)
-      expect(isHandlerConfig({})).toBe(false)
-    })
-
-    it('should return false for non-objects', () => {
-      expect(isHandlerConfig(null)).toBe(false)
-      expect(isHandlerConfig(undefined)).toBe(false)
-      expect(isHandlerConfig(() => {})).toBe(false)
-    })
-
-    it('should return false when handler is not a function', () => {
-      expect(isHandlerConfig({ handler: 'not a function' })).toBe(false)
-      expect(isHandlerConfig({ handler: null })).toBe(false)
-    })
-  })
-
-  describe('buildServerUrl', () => {
-    it('should build URL with protocol and port', () => {
-      expect(buildServerUrl('http:', 'localhost', 3000)).toBe(
-        'http://localhost:3000/'
-      )
-      expect(buildServerUrl('https:', 'example.com', 8443)).toBe(
-        'https://example.com:8443/'
-      )
-    })
-
-    it('should build URL without port when undefined', () => {
-      expect(buildServerUrl('http:', 'localhost')).toBe('http://localhost/')
-      expect(buildServerUrl('https:', 'example.com')).toBe(
-        'https://example.com/'
-      )
-    })
-
-    it('should handle port as string', () => {
-      expect(buildServerUrl('http:', 'localhost', '3000')).toBe(
-        'http://localhost:3000/'
-      )
-    })
-
-    it('should normalize protocol with or without colon', () => {
-      expect(buildServerUrl('http', 'localhost', 3000)).toBe(
-        'http://localhost:3000/'
-      )
-      expect(buildServerUrl('http:', 'localhost', 3000)).toBe(
-        'http://localhost:3000/'
       )
     })
   })

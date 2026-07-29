@@ -15,7 +15,7 @@ describe('routes', () => {
       expect(result).toHaveLength(1)
       expect(result[0]).toEqual({
         route: '/api',
-        method: 'ALL',
+        method: 'GET',
         handler
       })
     })
@@ -35,26 +35,115 @@ describe('routes', () => {
 
     it('should parse multiple HTTP methods', () => {
       const getHandler = vi.fn()
-      const postHandler = vi.fn()
+      const queryHandler = vi.fn()
       const routes = {
         '/api': {
           GET: getHandler,
-          POST: postHandler
+          QUERY: queryHandler
         }
       }
       const result = parseRoutes(routes)
 
       expect(result).toHaveLength(2)
       expect(result[0].method).toBe('GET')
-      expect(result[1].method).toBe('POST')
+      expect(result[1].method).toBe('QUERY')
+    })
+
+    it('should parse every HTTP method supported by H3', () => {
+      const handler = vi.fn()
+      const routes: Routes = {
+        '/api': {
+          GET: handler,
+          HEAD: handler,
+          PATCH: handler,
+          POST: handler,
+          PUT: handler,
+          DELETE: handler,
+          CONNECT: handler,
+          OPTIONS: handler,
+          TRACE: handler,
+          QUERY: handler
+        }
+      }
+      const result = parseRoutes(routes)
+
+      expect(result.map(({ method }) => method)).toEqual([
+        'GET',
+        'HEAD',
+        'PATCH',
+        'POST',
+        'PUT',
+        'DELETE',
+        'CONNECT',
+        'OPTIONS',
+        'TRACE',
+        'QUERY'
+      ])
+    })
+
+    it('should accept a fetchable object as an HTTPHandler', () => {
+      const handler = { fetch: vi.fn() }
+      const routes: Routes = { '/api': handler }
+      const result = parseRoutes(routes)
+
+      expect(result[0]).toEqual({
+        route: '/api',
+        method: 'GET',
+        handler
+      })
+    })
+
+    it('should prefer a fetchable handler over conflicting config keys', () => {
+      const handler = {
+        fetch: vi.fn(),
+        children: { ignored: true },
+        GET: vi.fn()
+      }
+      const routes: Routes = { '/api': handler }
+      const result = parseRoutes(routes)
+
+      expect(result[0]).toEqual({
+        route: '/api',
+        method: 'GET',
+        handler
+      })
+    })
+
+    it('should parse an explicit ALL handler with route options', () => {
+      const handler = { fetch: vi.fn() }
+      const options: RouteOptions = { meta: { name: 'king3' } }
+      const routes: Routes = {
+        '/api': {
+          ALL: {
+            handler,
+            meta: options.meta
+          }
+        }
+      }
+      const result = parseRoutes(routes)
+
+      expect(result[0]).toEqual({
+        route: '/api',
+        method: 'ALL',
+        handler,
+        options
+      })
     })
 
     it('should parse handler with options', () => {
       const handler = vi.fn()
-      const options: RouteOptions = { meta: { name: 'king3' } }
+      const middleware = vi.fn()
+      const options: RouteOptions = {
+        meta: { name: 'king3' },
+        middleware: [middleware]
+      }
       const routes: Routes = {
         '/api': {
-          GET: { handler, options }
+          GET: {
+            handler,
+            meta: options.meta,
+            middleware: options.middleware
+          }
         }
       }
       const result = parseRoutes(routes)
@@ -80,6 +169,30 @@ describe('routes', () => {
       expect(result).toHaveLength(2)
       expect(result[0].route).toBe('/api')
       expect(result[1].route).toBe('/api/users')
+    })
+
+    it('should reject an invalid method handler with route context', () => {
+      const routes = { '/api': { GET: 'invalid' } } as unknown as Routes
+
+      expect(() => parseRoutes(routes)).toThrow(
+        '[k3-server] Invalid route handler for GET /api.'
+      )
+    })
+
+    it('should reject invalid route children with route context', () => {
+      const routes = { '/api': { children: null } } as unknown as Routes
+
+      expect(() => parseRoutes(routes)).toThrow(
+        '[k3-server] Invalid children for route /api.'
+      )
+    })
+
+    it('should reject an empty route configuration', () => {
+      const routes = { '/api': {} } as unknown as Routes
+
+      expect(() => parseRoutes(routes)).toThrow(
+        '[k3-server] Invalid route configuration for /api.'
+      )
     })
 
     it('should join paths correctly with basePath', () => {
@@ -110,18 +223,28 @@ describe('routes', () => {
       const app = { all: vi.fn(), on: vi.fn() }
       const handler = vi.fn()
 
-      registerRoutes(app as any, { '/api': handler })
+      registerRoutes(app as any, { '/api': { ALL: handler } })
 
       expect(app.all).toHaveBeenCalledWith('/api', handler, undefined)
+    })
+
+    it('should register a direct handler as GET', () => {
+      const app = { all: vi.fn(), on: vi.fn() }
+      const handler = vi.fn()
+
+      registerRoutes(app as any, { '/api': handler })
+
+      expect(app.on).toHaveBeenCalledWith('GET', '/api', handler, undefined)
+      expect(app.all).not.toHaveBeenCalled()
     })
 
     it('should register specific method with app.on', () => {
       const app = { all: vi.fn(), on: vi.fn() }
       const handler = vi.fn()
 
-      registerRoutes(app as any, { '/api': { GET: handler } })
+      registerRoutes(app as any, { '/api': { OPTIONS: handler } })
 
-      expect(app.on).toHaveBeenCalledWith('GET', '/api', handler, undefined)
+      expect(app.on).toHaveBeenCalledWith('OPTIONS', '/api', handler, undefined)
     })
   })
 })

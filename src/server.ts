@@ -1,29 +1,27 @@
 import type {
   App,
+  AppInput,
   AppOptions,
-  AppServer,
-  AppServerOptions
+  Server,
+  ServerOptions
 } from '#types/server'
 
 import { H3, serve } from 'h3'
 
 import { registerMiddlewares } from './middlewares'
-import { registerPlugins } from './plugins'
 import { registerRoutes } from './routes'
-import { buildServerUrl } from './util'
+
+type ServerState = 'idle' | 'starting' | 'listening' | 'closing'
 
 /**
  * Creates an H3 application instance with the provided configuration.
  * Registers plugins, middlewares, and routes in the correct order.
  */
-function createApp(options: AppOptions): App {
-  const { routes, middlewares, plugins } = options
+function createApp(options: AppOptions = {}): App {
+  const { routes, middlewares, ...h3Config } = options
 
   // Create H3 App
-  const app = new H3()
-
-  // Register all plugins
-  registerPlugins(app, plugins)
+  const app = new H3(h3Config)
 
   // Register all middlewares
   registerMiddlewares(app, middlewares)
@@ -35,63 +33,87 @@ function createApp(options: AppOptions): App {
 }
 
 /**
- * Creates an HTTP server instance with the configured application.
+ * Creates an HTTP server controller from an H3 app or declarative app options.
+ * Server-specific options are passed separately to srvx.
  */
-function createAppServer(options: AppServerOptions): AppServer {
+function createServer(
+  appOrOptions: AppInput = {},
+  serverOptions: ServerOptions = {}
+): Server {
   const {
-    routes,
-    middlewares,
-    plugins,
     port = 0,
-    protocol = 'http',
     hostname = '127.0.0.1',
     ...restOptions
-  } = options
+  } = filterServerOptions(serverOptions)
+  const app = isH3App(appOrOptions) ? appOrOptions : createApp(appOrOptions)
+  let state: ServerState = 'idle'
 
-  const app = createApp({
-    routes,
-    middlewares,
-    plugins
-  })
-
-  let lastListenPort: number | undefined
-
-  const server: AppServer = {
-    raw: undefined,
+  const server: Server = {
     app,
+    raw: undefined,
     port: undefined,
     url: undefined,
 
     /**
      * Starts the server on the specified port.
      * Uses H3's serve() method internally to start the HTTP server.
+     * Throws if the server has already been started.
      */
-    listen: async (listenPort?: number): Promise<void> => {
-      if (server.raw) {
-        await server.close()
+    listen: async (listenPort?: number): Promise<Server> => {
+      if (state === 'listening') {
+        throw new Error(
+          '[k3-server] Server is already listening. Close it before listening again.'
+        )
+      }
+      if (state !== 'idle') {
+        throw new Error(`[k3-server] Cannot listen while server is ${state}.`)
       }
 
       const targetPort = listenPort ?? port
-      lastListenPort = Number(targetPort)
+      let raw: Server['raw']
+      state = 'starting'
 
-      server.raw = serve(server.app, {
-        port: targetPort,
-        hostname,
-        protocol,
-        ...restOptions
-      })
+      try {
+        raw = serve(server.app, {
+          port: targetPort,
+          hostname,
+          ...restOptions
+        })
+        server.raw = raw
 
-      // Wait for the server to start
-      await server.raw.ready()
+        // Wait for the server to start
+        await raw.ready()
 
-      // Parse port and other information from URL
-      const rawUrl = new URL(server.raw.url as string)
-      const rawProtocol = rawUrl.protocol
-      const rawHostname = rawUrl.hostname
-      const rawPort = Number.parseInt(rawUrl.port, 10)
+        if (!raw.url) {
+          throw new Error('[k3-server] Server started without a listening URL.')
+        }
 
-      server.port = rawPort
-      server.url = buildServerUrl(rawProtocol, rawHostname, rawPort)
+        const rawUrl = new URL(raw.url)
+        const rawPort = resolveServerPort(rawUrl)
+
+        if (rawUrl.hostname === '127.0.0.1') {
+          rawUrl.hostname = 'localhost'
+        }
+
+        server.port = rawPort
+        server.url = rawUrl.toString()
+        state = 'listening'
+
+        return server
+      } catch (error) {
+        try {
+          if (raw) await raw.close(true)
+        } catch {
+          // Preserve the original startup error.
+        } finally {
+          if (!raw || server.raw === raw) {
+            resetServerState(server)
+          }
+          state = 'idle'
+        }
+
+        throw error
+      }
     },
 
     /**
@@ -99,25 +121,87 @@ function createAppServer(options: AppServerOptions): AppServer {
      * Waits for pending requests to complete before shutting down.
      */
     close: async (): Promise<void> => {
-      if (server.raw) {
-        await server.raw.close()
+      if (state === 'starting' || state === 'closing') {
+        throw new Error(`[k3-server] Cannot close while server is ${state}.`)
       }
-      server.port = undefined
-      server.url = undefined
-      server.raw = undefined
-    },
+      if (state === 'idle') {
+        resetServerState(server)
+        return
+      }
 
-    /**
-     * Restarts the server by closing and re-listening.
-     * Optionally accepts a new port to listen on.
-     */
-    restart: async (listenPort?: number): Promise<void> => {
-      await server.close()
-      await server.listen(listenPort ?? lastListenPort)
+      state = 'closing'
+
+      try {
+        if (server.raw) await server.raw.close()
+        resetServerState(server)
+        state = 'idle'
+      } catch (error) {
+        state = 'listening'
+        throw error
+      }
     }
   }
 
   return server
 }
 
-export { createApp, createAppServer }
+/**
+ * Checks whether the input is an H3 application instead of declarative options.
+ * Uses H3 capabilities rather than instanceof so apps from another H3 copy work.
+ */
+function isH3App(input: AppInput): input is App {
+  return (
+    'fetch' in input &&
+    typeof input.fetch === 'function' &&
+    'register' in input &&
+    typeof input.register === 'function' &&
+    'on' in input &&
+    typeof input.on === 'function' &&
+    'use' in input &&
+    typeof input.use === 'function'
+  )
+}
+
+/**
+ * Resolves the actual listening port from a server URL.
+ * WHATWG URL omits the default port for HTTP and HTTPS URLs.
+ */
+function resolveServerPort(url: URL): number {
+  if (url.port) {
+    return Number.parseInt(url.port, 10)
+  }
+
+  if (url.protocol === 'http:') {
+    return 80
+  }
+
+  if (url.protocol === 'https:') {
+    return 443
+  }
+
+  throw new Error(`[k3-server] Unsupported server protocol: ${url.protocol}`)
+}
+
+/**
+ * Removes srvx options controlled internally by H3 and k3-server.
+ * Runtime filtering is required because extra properties can bypass Omit types.
+ */
+function filterServerOptions(options: ServerOptions): ServerOptions {
+  const filteredOptions = { ...options }
+
+  Reflect.deleteProperty(filteredOptions, 'fetch')
+  Reflect.deleteProperty(filteredOptions, 'manual')
+
+  return filteredOptions
+}
+
+/**
+ * Clears the runtime state associated with the active srvx server.
+ */
+function resetServerState(server: Server): void {
+  server.raw = undefined
+  server.port = undefined
+  server.url = undefined
+}
+
+export { createApp, createServer }

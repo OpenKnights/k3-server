@@ -3,13 +3,11 @@
   "compilerOptions": {
     "target": "esnext",
     "lib": ["esnext", "DOM", "DOM.Iterable"],
-    "baseUrl": ".",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "#/*": ["./*"],
-      "#types/*": ["types/*"]
+      "#types/*": ["./types/*"]
     },
     "resolveJsonModule": true,
     "types": ["node"],

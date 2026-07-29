@@ -1,3 +1,5 @@
 import { defineConfig } from '@king-3/prettier-config'
 
-export default defineConfig()
+export default defineConfig({
+  plugins: ['@prettier/plugin-oxc']
+})

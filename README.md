@@ -1,759 +1,296 @@
-# better-mock-server
+# k3-server
 
-> A TypeScript-first mock server library built on top of [unjs/h3](https://github.com/unjs/h3), providing an elegant and type-safe way to create HTTP mock servers for development and testing.
+> A lightweight, TypeScript-first tool for quickly creating HTTP servers, powered by [unjs/h3](https://github.com/unjs/h3).
 
-[![npm version](https://img.shields.io/npm/v/better-mock-server.svg)](https://www.npmjs.com/package/better-mock-server)
-[![npm downloads](https://img.shields.io/npm/dm/better-mock-server.svg)](https://www.npmjs.com/package/better-mock-server)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/better-mock-server.svg)](https://bundlephobia.com/package/better-mock-server)
+[![npm version](https://img.shields.io/npm/v/k3-server.svg)](https://www.npmjs.com/package/k3-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [English](./README.md) | [中文](./README_zh.md)
 
-## ✨ Features
+## Features
 
-- 🎯 **Type-Safe**: Full TypeScript support with comprehensive type definitions
-- 🚀 **Built on H3**: Leverages the powerful and minimal H3 framework
-- 🎨 **Elegant API**: Clean and intuitive configuration syntax
-- 🔧 **Flexible Routing**: Support for nested routes and multiple HTTP methods
-- 🔌 **Middleware Support**: Easy middleware registration with route-specific options
-- 🧩 **Plugin System**: Extensible through H3's plugin architecture
-- 📦 **Zero Config**: Works out of the box with sensible defaults
+- Start a real HTTP server with minimal configuration
+- Define nested, method-specific routes declaratively
+- Access the underlying H3 app and srvx server when needed
 
-## 📦 Installation
+## Installation
 
 ```bash
-npm install better-mock-server h3
+npm install k3-server
 ```
 
-## 🚀 Quick Start
+k3-server is ESM-only and requires Node.js 20.16 or newer.
 
-### Basic Usage
+## Quick Start
 
 ```typescript
-import { createAppServer } from 'better-mock-server'
+import { createServer } from 'k3-server'
 
-const server = createAppServer({
-  port: 3000,
+const server = createServer({
   routes: {
-    '/api/hello': (event) => {
-      return { message: 'Hello World!' }
-    }
+    '/hello': () => ({ message: 'Hello!' })
   }
 })
 
 await server.listen()
+
 console.log(`Server running at ${server.url}`)
 
-// Later: close the server
 await server.close()
 ```
 
-### Random Port
+The server uses port `0` by default, allowing the operating system to assign an
+available port. The resolved address is exposed through `server.url` and
+`server.port`.
+
+Pass srvx server options as the second argument when you need a fixed port or
+other runtime configuration:
 
 ```typescript
-// Use port 0 for automatic port assignment
-const server = createAppServer({
-  port: 0,
+const server = createServer(
+  {
+    routes: {
+      '/hello': () => 'Hello!'
+    }
+  },
+  {
+    hostname: '127.0.0.1',
+    port: 3000
+  }
+)
+```
+
+Creating the controller does not start the server. It only begins listening
+when `listen()` is called.
+
+## Routes
+
+A direct route handler responds to GET requests:
+
+```typescript
+const server = createServer({
   routes: {
-    '/api/ping': () => 'pong'
+    '/ping': () => 'pong'
   }
 })
-
-await server.listen()
-console.log(`Server running at ${server.url}`) // e.g., http://localhost:54321/
-console.log(`Port: ${server.port}`) // e.g., 54321
 ```
 
-## 🎯 Core Concepts
-
-### Routes
-
-Routes define the HTTP endpoints and their handlers. You can use simple handlers or detailed route configurations.
-
-#### Simple Handler (All Methods)
+Use method keys for other HTTP methods, `ALL` to match every method, and
+`children` to group nested routes:
 
 ```typescript
-const routes = {
-  '/api/ping': (event) => 'pong'
-}
-```
+import { readBody } from 'h3'
+import { createServer } from 'k3-server'
 
-#### Method-Specific Handlers
-
-```typescript
-const routes = {
-  '/api/users': {
-    GET: (event) => [
-      { id: 1, name: 'John' },
-      { id: 2, name: 'Jane' }
-    ],
-    POST: async (event) => {
-      const body = await readBody(event)
-      return { id: 3, ...body }
-    },
-    DELETE: (event) => {
-      return { success: true }
-    }
-  }
-}
-```
-
-#### Nested Routes
-
-```typescript
-const routes = {
-  '/api': {
-    GET: (event) => 'API Root',
-    children: {
-      '/users': {
-        GET: (event) => 'List users',
-        children: {
-          '/:id': {
-            GET: (event) => `Get user ${event.context.params.id}`,
-            DELETE: (event) => `Delete user ${event.context.params.id}`
+const server = createServer({
+  routes: {
+    '/api': {
+      children: {
+        '/users': {
+          GET: () => [{ id: 1, name: 'Alice' }],
+          POST: async (event) => ({
+            id: 2,
+            ...(await readBody(event))
+          }),
+          children: {
+            '/:id': {
+              GET: (event) => ({
+                id: event.context.params.id
+              })
+            }
           }
         }
       }
+    },
+    '/all': {
+      ALL: (event) => ({
+        method: event.req.method
+      })
     }
   }
-}
+})
 ```
 
-#### Route Options
+H3 route options are placed alongside `handler`:
 
 ```typescript
 const routes = {
-  '/api/meta': {
-    GET: {
-      handler: (event) => 'meta options',
-      options: {
-        meta: { name: 'king3' }
-      }
+  '/users': {
+    POST: {
+      handler: createUser,
+      meta: { name: 'create-user' },
+      middleware: [requireAuth]
     }
   }
 }
 ```
 
-### Middlewares
-
-Middlewares are functions that run before route handlers, useful for logging, authentication, CORS, etc.
-
-#### Global Middleware
+`defineRoutes()` is an identity helper that provides type inference for
+standalone route definitions. Inline routes passed to `createServer()` are
+already typed.
 
 ```typescript
-const middlewares = [
-  (event, next) => {
-    console.log(`${event.method} ${event.path}`)
-    return next()
-  }
-]
+import { defineRoutes } from 'k3-server'
+
+const routes = defineRoutes({
+  '/health': () => 'ok'
+})
 ```
 
-#### Route-Specific Middleware
+## H3 Integration
+
+The H3 app is exposed as `server.app`. Use it to register native H3 routes and
+middleware before calling `listen()`:
 
 ```typescript
-const middlewares = [
-  {
-    route: '/api',
-    handler: (event, next) => {
-      console.log('API route accessed')
-      return next()
-    }
-  }
-]
+import { createServer } from 'k3-server'
+
+const server = createServer()
+
+server.app.get('/hello', () => 'Hello from H3')
+server.app.post('/users', createUser)
+server.app.use(requestLogger)
+
+await server.listen()
 ```
 
-#### Middleware with Options
+Declarative routes and the native H3 API can be used together.
+
+Use `createApp()` when you want to configure the app separately or pass an
+existing H3 app to `createServer()`:
 
 ```typescript
-const middlewares = [
+import { createApp, createServer } from 'k3-server'
+
+const app = createApp({
+  debug: true,
+  routes: {
+    '/hello': () => 'Hello!'
+  }
+})
+
+app.get('/health', () => 'ok')
+
+const server = createServer(app, { port: 3000 })
+await server.listen()
+```
+
+`AppOptions` extends H3's native `H3Config`, so H3 options such as `plugins`,
+`onRequest`, `onResponse`, and `onError` can be passed directly.
+
+## Middleware
+
+Pass middleware functions directly, or add a route and H3 middleware options:
+
+```typescript
+import { createServer, defineMiddleware, defineMiddlewares } from 'k3-server'
+
+const requestLogger = defineMiddleware(async (event, next) => {
+  console.log(event.req.method, event.url.pathname)
+  return next()
+})
+
+const middlewares = defineMiddlewares([
+  requestLogger,
   {
+    route: '/api/**',
     handler: (event, next) => next(),
     options: {
       method: 'POST'
     }
   }
-]
+])
+
+const server = createServer({ middlewares })
 ```
 
-### Plugins
-
-Plugins extend the functionality of your server using H3's plugin system.
-
-```typescript
-import { definePlugin } from 'better-mock-server'
-
-const loggerPlugin = definePlugin((h3, _options) => {
-  if (h3.config.debug) {
-    h3.use((req) => {
-      console.log(`[${req.method}] ${req.url}`)
-    })
-  }
-})
-
-const server = createAppServer({
-  routes: {
-    /* ... */
-  },
-  plugins: [loggerPlugin]
-})
-
-await server.listen()
-```
-
-## 📚 API Reference
-
-### Server Functions
-
-#### `createAppServer(options)`
-
-Creates an HTTP server with the configured application.
-
-**Parameters:**
-
-- `options.routes` (required): Routes configuration
-- `options.middlewares` (optional): Middlewares array
-- `options.plugins` (optional): Plugins array
-- `options.port` (optional): Port number (default: 0 for random port)
-- `options.hostname` (optional): Hostname (default: 'localhost')
-- `options.protocol` (optional): Protocol (default: 'http')
-
-**Returns:** `AppServer` object
-
-**AppServer Properties:**
-
-- `raw`: Raw H3 server instance
-- `app`: H3 application instance
-- `port`: Server port number (available after `listen()`)
-- `url`: Server URL (available after `listen()`)
-- `listen(port?)`: Async function to start the server. Auto-closes the previous server if called again
-- `close()`: Async function to close the server
-- `restart(port?)`: Async function to restart the server. Uses the last listen port if no port is provided
-
-**Examples:**
-
-```typescript
-const server = createAppServer({
-  port: 3000,
-  routes: {
-    '/api/hello': () => 'Hello'
-  }
-})
-
-await server.listen()
-console.log(`Running at ${server.url}`)
-
-// Or override port when listening
-await server.listen(4000)
-
-// Clean up
-await server.close()
-```
-
-#### `createApp(options)`
-
-Creates an H3 application instance without starting a server. Useful when you want to integrate with existing server setup.
-
-**Parameters:**
-
-- `options.routes` (optional): Routes configuration
-- `options.middlewares` (optional): Middlewares array
-- `options.plugins` (optional): Plugins array
-
-**Returns:** H3 application instance
-
-**Example:**
-
-```typescript
-import { createApp } from 'better-mock-server'
-import { serve } from 'h3'
-
-const app = createApp({
-  routes: {
-    '/api/hello': () => 'Hello'
-  }
-})
-
-// Use with your own server configuration
-const server = serve(app, { port: 4000 })
-await server.ready()
-console.log(`Server running at ${server.url}`)
-```
-
-### Route Functions
-
-#### `defineRoutes(routes)`
-
-Provides type-safe route definitions with IDE auto-completion.
-
-**Example:**
-
-```typescript
-import { defineRoutes } from 'better-mock-server'
-
-const routes = defineRoutes({
-  '/api/users': {
-    GET: () => [],
-    POST: async (event) => {
-      const body = await readBody(event)
-      return body
-    }
-  }
-})
-```
-
-#### `parseRoutes(routes, basePath?)`
-
-Parses nested route structures into a flat array of route definitions. Mainly for internal use.
-
-**Parameters:**
-
-- `routes`: Routes configuration object
-- `basePath` (optional): Base path for nested routes
-
-**Returns:** Array of parsed route objects
-
-#### `registerRoutes(app, routes?)`
-
-Registers routes to an H3 application instance.
-
-**Parameters:**
-
-- `app`: H3 application instance
-- `routes` (optional): Routes configuration
-
-### Middleware Functions
-
-#### `defineMiddleware(input)`
-
-Defines middleware with type safety. Accepts either a function or configuration object.
-
-**Example:**
-
-```typescript
-import { defineMiddleware } from 'better-mock-server'
-
-// With function
-const mw1 = defineMiddleware((event, next) => {
-  console.log('Middleware')
-  return next()
-})
-
-// With config
-const mw2 = defineMiddleware({
-  route: '/api',
-  handler: (event, next) => next(),
-  options: { method: 'POST' }
-})
-```
-
-#### `parseMiddlewares(middlewares)`
-
-Parses middleware configurations into standardized tuple format. Mainly for internal use.
-
-**Parameters:**
-
-- `middlewares`: Array of middleware functions or configurations
-
-**Returns:** Array of parsed middleware tuples
-
-#### `registerMiddlewares(app, middlewares?)`
-
-Registers middlewares to an H3 application instance.
-
-**Parameters:**
-
-- `app`: H3 application instance
-- `middlewares` (optional): Middlewares array
-
-### Plugin Functions
-
-#### `definePlugin`
-
-Re-export of H3's `definePlugin` for convenience.
-
-**Example:**
-
-```typescript
-import { definePlugin } from 'better-mock-server'
-
-const myPlugin = definePlugin((h3, _options) => {
-  // Plugin setup
-})
-```
-
-#### `registerPlugins(app, plugins?)`
-
-Registers plugins to an H3 application instance.
-
-**Parameters:**
-
-- `app`: H3 application instance
-- `plugins` (optional): Plugins array
-
-### Utility Functions
-
-#### `buildServerUrl(protocol, hostname, port?)`
-
-Builds a server URL string from protocol, hostname, and optional port.
-Automatically normalizes the protocol (adds ':' if not present).
-
-**Parameters:**
-
-- `protocol`: Protocol string (e.g., 'http', 'https', 'http:', 'https:')
-- `hostname`: Hostname or IP address
-- `port` (optional): Port number or string
-
-**Returns:** Full URL string
-
-**Examples:**
-
-```typescript
-import { buildServerUrl } from 'better-mock-server'
-
-buildServerUrl('http', 'localhost', 3000)
-// 'http://localhost:3000/'
-
-buildServerUrl('https:', 'example.com', 443)
-// 'https://example.com:443/'
-
-buildServerUrl('http', '127.0.0.1')
-// 'http://127.0.0.1/'
-
-buildServerUrl('http', '::1', 8080)
-// 'http://[::1]:8080/'
-```
-
-#### `joinPaths(...paths)`
-
-Joins multiple path segments into a normalized path.
-
-**Example:**
-
-```typescript
-import { joinPaths } from 'better-mock-server'
-
-joinPaths('/api', 'users') // '/api/users'
-joinPaths('/api/', '/users/') // '/api/users'
-joinPaths('api', '', 'users') // 'api/users'
-```
-
-## 📝 Type Definitions
-
-### Routes Types
-
-```typescript
-import type { EventHandler, RouteOptions } from 'h3'
-
-type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-type AllHTTPMethod = 'ALL'
-
-interface RouteHandlerConfig {
-  handler: EventHandler
-  options?: RouteOptions
-}
-
-type RouteHandler = EventHandler | RouteHandlerConfig
-
-interface RouteConfig {
-  GET?: RouteHandler
-  POST?: RouteHandler
-  PUT?: RouteHandler
-  PATCH?: RouteHandler
-  DELETE?: RouteHandler
-  children?: Routes
-}
-
-interface Routes {
-  [route: string]: RouteHandler | RouteConfig
-}
-
-interface ParsedRoute {
-  route: string
-  method: HTTPMethod | AllHTTPMethod
-  handler: EventHandler
-  options?: RouteOptions
-}
-```
-
-### Middleware Types
-
-```typescript
-import type { Middleware, MiddlewareOptions } from 'h3'
-
-interface MiddlewareConfig {
-  route?: string
-  handler: Middleware
-  options?: MiddlewareOptions
-}
-
-type Middlewares = Array<Middleware | MiddlewareConfig>
-
-type ParsedMiddleware =
-  | [Middleware]
-  | [string, Middleware]
-  | [Middleware, MiddlewareOptions]
-  | [string, Middleware, MiddlewareOptions]
-```
-
-### Plugin Types
-
-```typescript
-import type { H3Plugin } from 'h3'
-
-type Plugins = H3Plugin[]
-```
-
-### Server Types
-
-```typescript
-import type { H3 as H3Instance, serve } from 'h3'
-import type { ServerOptions } from 'srvx'
-
-type Server = ReturnType<typeof serve>
-
-type App = H3Instance
-
-interface AppOptions {
-  routes?: Routes
-  middlewares?: Middlewares
-  plugins?: Plugins
-}
-
-type srvxServerOptions = Omit<ServerOptions, 'fetch' | 'middleware' | 'plugins'>
-
-interface AppServerOptions extends AppOptions, srvxServerOptions {
-  routes: Routes
-}
-
-interface AppServer {
-  raw: Server | undefined
-  app: App
-  port: number | string | undefined
-  url: string | undefined
-  listen: (listenPort?: number) => Promise<void>
-  close: () => Promise<void>
-  restart: (listenPort?: number) => Promise<void>
-}
-```
-
-## 💡 Complete Example
-
-```typescript
-import {
-  createAppServer,
-  defineMiddleware,
-  definePlugin
-} from 'better-mock-server'
-import { readBody } from 'h3'
-
-// Define a logger middleware
-const logger = defineMiddleware((event, next) => {
-  console.log(`[${new Date().toISOString()}] ${event.method} ${event.path}`)
-  return next()
-})
-
-// Define a custom plugin
-const corsPlugin = definePlugin((h3, _options) => {
-  // CORS setup logic
-})
-
-// Create server with full configuration
-const server = createAppServer({
-  port: 3000,
-
-  plugins: [corsPlugin],
-
-  middlewares: [
-    logger,
-    {
-      route: '/api',
-      handler: (event, next) => {
-        event.context.apiAccess = true
-        return next()
-      }
-    }
-  ],
-
-  routes: {
-    '/': () => 'Welcome to Better Mock Server!',
-
-    '/api': {
-      GET: () => ({ version: '1.0.0' }),
-
-      children: {
-        '/users': {
-          GET: () => [
-            { id: 1, name: 'Alice', email: 'alice@example.com' },
-            { id: 2, name: 'Bob', email: 'bob@example.com' }
-          ],
-
-          POST: async (event) => {
-            const body = await readBody(event)
-            return {
-              id: Date.now(),
-              ...body,
-              createdAt: new Date().toISOString()
-            }
-          },
-
-          children: {
-            '/:id': {
-              GET: (event) => {
-                const id = event.context.params.id
-                return {
-                  id,
-                  name: `User ${id}`,
-                  email: `user${id}@example.com`
-                }
-              },
-
-              PUT: async (event) => {
-                const id = event.context.params.id
-                const body = await readBody(event)
-                return {
-                  id,
-                  ...body,
-                  updatedAt: new Date().toISOString()
-                }
-              },
-
-              DELETE: (event) => {
-                const id = event.context.params.id
-                return {
-                  success: true,
-                  deletedId: id
-                }
-              }
-            }
-          }
-        },
-
-        '/posts': {
-          GET: () => [
-            { id: 1, title: 'First Post', content: 'Hello World' },
-            { id: 2, title: 'Second Post', content: 'TypeScript is awesome' }
-          ]
-        }
-      }
-    }
-  }
-})
-
-await server.listen()
-console.log(`🚀 Server running at ${server.url}`)
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n👋 Shutting down...')
-  await server.close()
-  process.exit(0)
-})
-```
-
-## ✅ Best Practices
-
-### 1. Use Port 0 for Testing
-
-Let the system assign an available port automatically:
-
-```typescript
-const server = createAppServer({
-  port: 0, // Random port
-  routes: {
-    /* ... */
-  }
-})
-await server.listen()
-console.log(`Test server running on port ${server.port}`)
-```
-
-### 2. Use `defineRoutes` for Type Safety
-
-Always wrap your routes with `defineRoutes()` for better IDE support and type checking.
-
-### 3. Order Matters
-
-Middlewares and routes are registered in the order they appear. Place global middlewares before route-specific ones.
-
-### 4. Async Handlers
-
-When working with request bodies or async operations, always use async handlers:
-
-```typescript
-;async (event) => {
-  const body = await readBody(event)
-  return body
-}
-```
-
-### 5. Error Handling
-
-Use H3's error handling utilities:
-
-```typescript
-import { createError } from 'h3'
-;(event) => {
-  throw createError({
-    statusCode: 404,
-    message: 'User not found'
-  })
-}
-```
-
-### 6. Path Parameters
-
-Access route parameters through `event.context.params`:
+Middleware runs in registration order. Use route middleware when behavior
+belongs to one route:
 
 ```typescript
 const routes = {
-  '/:id': {
-    GET: (event) => {
-      const id = event.context.params.id
-      return { id }
+  '/secret': {
+    GET: {
+      handler: secretHandler,
+      middleware: [requireAuth]
     }
   }
 }
 ```
 
-### 7. Nested Routes
+See the [H3 middleware guide](https://h3.dev/guide/basics/middleware) for
+middleware behavior and lifecycle utilities.
 
-Use the `children` property for better organization:
+## Plugins
+
+`definePlugin` is re-exported from H3:
 
 ```typescript
-const routes = {
-  '/api': {
-    children: {
-      '/users': {
-        /* ... */
-      },
-      '/posts': {
-        /* ... */
-      }
-    }
-  }
-}
+import { createServer, definePlugin } from 'k3-server'
+
+const healthPlugin = definePlugin((app) => {
+  app.get('/health', () => 'ok')
+})()
+
+const server = createServer({
+  plugins: [healthPlugin]
+})
 ```
 
-## ⚠️ Constraints & Limitations
+Plugins in the first argument are H3 app plugins. Plugins in the second
+`serverOptions` argument are srvx server plugins.
 
-- The library is built on H3, so all H3 limitations apply
-- Route definitions must be known at server startup (no dynamic route registration)
-- Middleware execution order follows the registration order
-- Port 0 will assign a random available port
+See the [H3 plugin guide](https://h3.dev/guide/advanced/plugins) for more
+details.
 
-## 📄 License
+## API
 
-[MIT](./LICENSE) License © 2025-PRESENT [king3](https://github.com/coderking3)
+### `createServer(appOrOptions?, serverOptions?)`
 
-## 🤝 Contributing
+Creates a synchronous server controller without starting the HTTP listener.
 
-Contributions, issues and feature requests are welcome!
+- `appOrOptions`: An existing H3 app or declarative `AppOptions`
+- `serverOptions`: srvx options except `fetch` and `manual`
+- Default port: `0`
+- Default hostname: `127.0.0.1`
 
-Feel free to check the [issues page](https://github.com/OpenKnights/better-mock-server/issues).
+The returned controller exposes:
 
-## 🔗 Related Projects
+- `app`: H3 application
+- `raw`: srvx server after listening
+- `port`: Resolved port after listening
+- `url`: Resolved URL after listening
+- `listen(port?)`: Start listening
+- `close()`: Stop listening and clear runtime state
 
-- [unjs/h3](https://github.com/unjs/h3) - Minimal H3 HTTP framework
-- [unjs/srvx](https://github.com/unjs/srvx) - Universal Server based on web standards
-- [unjs](https://unjs.io) - Unified JavaScript Tools
+Calling `listen()` while the server is already running throws an error. Close
+the server before listening again.
+
+### `createApp(options?)`
+
+Creates an H3 app from native H3 config plus declarative `routes` and
+`middlewares`.
+
+### Configuration helpers
+
+- `defineRoutes(routes)`: Type helper for standalone route definitions
+- `defineMiddlewares(middlewares)`: Type helper for standalone middleware definitions
+- `defineMiddleware`: Re-export from H3
+- `definePlugin`: Re-export from H3
+
+See [playground/server.ts](./playground/server.ts) for a larger working example.
+
+## Notes
+
+- Register routes, middleware, and plugins before calling `listen()`.
+- Always call `close()` when the server is no longer needed.
+- Routes cannot be added to an H3 app after the server has initialized.
+
+## Related Projects
+
+- [unjs/h3](https://github.com/unjs/h3) — Minimal HTTP framework
+- [h3js/srvx](https://github.com/h3js/srvx) — Universal server runtime
+
+## License
+
+[MIT](./LICENSE) © 2025-PRESENT [king3](https://github.com/coderking3)

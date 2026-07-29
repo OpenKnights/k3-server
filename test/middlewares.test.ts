@@ -3,12 +3,30 @@ import type { MiddlewareOptions } from 'h3'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
-  defineMiddleware,
+  defineMiddlewares,
+  isMiddlewareConfig,
   parseMiddlewares,
   registerMiddlewares
 } from '../src/middlewares'
 
 describe('middlewares', () => {
+  describe('isMiddlewareConfig', () => {
+    it('should return true for configurations with a middleware function', () => {
+      expect(isMiddlewareConfig({ handler: () => {} })).toBe(true)
+      expect(isMiddlewareConfig({ handler: () => {}, route: '/api' })).toBe(
+        true
+      )
+    })
+
+    it('should return false for configurations without a middleware function', () => {
+      expect(isMiddlewareConfig({ route: '/api' })).toBe(false)
+      expect(isMiddlewareConfig({ handler: 'not a function' })).toBe(false)
+      expect(isMiddlewareConfig({ handler: null })).toBe(false)
+      expect(isMiddlewareConfig(null)).toBe(false)
+      expect(isMiddlewareConfig(undefined)).toBe(false)
+    })
+  })
+
   describe('parseMiddlewares', () => {
     it('should parse plain middleware functions', () => {
       const mw = vi.fn()
@@ -62,20 +80,20 @@ describe('middlewares', () => {
     })
   })
 
-  describe('defineMiddleware', () => {
-    it('should wrap function in config object', () => {
+  describe('defineMiddlewares', () => {
+    it('should return middleware configurations unchanged', () => {
       const mw = vi.fn()
-      const result = defineMiddleware(mw)
+      const middlewares = [
+        mw,
+        {
+          route: '/api/**',
+          handler: vi.fn(),
+          options: { method: 'POST' }
+        }
+      ]
+      const result = defineMiddlewares(middlewares)
 
-      expect(result).toEqual({ handler: mw })
-    })
-
-    it('should return config object as-is', () => {
-      const mw = vi.fn()
-      const config = { handler: mw, route: '/api' }
-      const result = defineMiddleware(config)
-
-      expect(result).toBe(config)
+      expect(result).toBe(middlewares)
     })
   })
 

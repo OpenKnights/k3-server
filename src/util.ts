@@ -1,3 +1,6 @@
+const DUPLICATE_SLASHES_RE = /\/+/g
+const TRAILING_SLASH_RE = /\/$/
+
 /**
  * Checks if a value is a plain object.
  * Returns false for arrays, null, and non-object types.
@@ -23,41 +26,10 @@ export const isEmptyArray = (value: unknown): value is undefined | null | [] =>
  */
 export function joinPaths(...paths: string[]): string {
   return (
-    paths.filter(Boolean).join('/').replace(/\/+/g, '/').replace(/\/$/, '') ||
-    '/'
+    paths
+      .filter(Boolean)
+      .join('/')
+      .replace(DUPLICATE_SLASHES_RE, '/')
+      .replace(TRAILING_SLASH_RE, '') || '/'
   )
-}
-
-/**
- * Type guard to check if a configuration object contains a handler function.
- * Used internally to distinguish between handler configs and plain handlers.
- */
-// eslint-disable-next-line typescript/no-unsafe-function-type
-export const isHandlerConfig = <T extends { handler: Function }>(
-  config: unknown
-): config is T => {
-  return (
-    isObject(config) &&
-    'handler' in config &&
-    typeof (config as T).handler === 'function'
-  )
-}
-
-/**
- * Builds a server URL using the WHATWG URL API.
- */
-export const buildServerUrl = (
-  protocol: string,
-  hostname: string,
-  port?: number | string
-) => {
-  // Normalize protocol: add ':' if not present
-  const normalizedProtocol = protocol.endsWith(':') ? protocol : `${protocol}:`
-
-  // Normalize hostname: map 127.0.0.1 to localhost for consistency
-  const normalizedHostname = hostname === '127.0.0.1' ? 'localhost' : hostname
-
-  const url = new URL(`${normalizedProtocol}//${normalizedHostname}`)
-  if (port != null) url.port = String(port)
-  return url.toString()
 }

@@ -1,759 +1,288 @@
-# better-mock-server
+# k3-server
 
-> 一个基于 [unjs/h3](https://github.com/unjs/h3) 构建的 TypeScript 优先的 mock 服务器库,为开发和测试提供优雅且类型安全的 HTTP mock 服务器创建方式。
+> 一个由 [unjs/h3](https://github.com/unjs/h3) 驱动、用于快速创建 HTTP 服务的轻量级 TypeScript 工具库。
 
-[![npm version](https://img.shields.io/npm/v/better-mock-server.svg)](https://www.npmjs.com/package/better-mock-server)
-[![npm downloads](https://img.shields.io/npm/dm/better-mock-server.svg)](https://www.npmjs.com/package/better-mock-server)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/better-mock-server.svg)](https://bundlephobia.com/package/better-mock-server)
+[![npm version](https://img.shields.io/npm/v/k3-server.svg)](https://www.npmjs.com/package/k3-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [English](./README.md) | [中文](./README_zh.md)
 
-## ✨ 特性
+## 特性
 
-- 🎯 **类型安全**: 完整的 TypeScript 支持和全面的类型定义
-- 🚀 **基于 H3**: 利用强大且精简的 H3 框架
-- 🎨 **优雅 API**: 清晰直观的配置语法
-- 🔧 **灵活路由**: 支持嵌套路由和多种 HTTP 方法
-- 🔌 **中间件支持**: 轻松注册中间件,支持路由特定选项
-- 🧩 **插件系统**: 通过 H3 的插件架构进行扩展
-- 📦 **零配置**: 开箱即用,具有合理的默认值
+- 使用少量配置启动真实 HTTP 服务
+- 通过声明式配置定义嵌套路由和不同 HTTP 方法
+- 需要时可以直接访问底层 H3 App 和 srvx Server
 
-## 📦 安装
+## 安装
 
 ```bash
-npm install better-mock-server h3
+npm install k3-server
 ```
 
-## 🚀 快速开始
+k3-server 仅提供 ESM 构建，需要 Node.js 20.16 或更高版本。
 
-### 基本用法
+## 快速开始
 
 ```typescript
-import { createAppServer } from 'better-mock-server'
+import { createServer } from 'k3-server'
 
-const server = createAppServer({
-  port: 3000,
+const server = createServer({
   routes: {
-    '/api/hello': (event) => {
-      return { message: 'Hello World!' }
-    }
+    '/hello': () => ({ message: '你好！' })
   }
 })
 
 await server.listen()
-console.log(`服务器运行在 ${server.url}`)
 
-// 稍后:关闭服务器
+console.log(`服务运行于 ${server.url}`)
+
 await server.close()
 ```
 
-### 随机端口
+服务默认使用端口 `0`，由操作系统分配可用端口。实际地址和端口可以通过
+`server.url` 和 `server.port` 获取。
+
+需要固定端口或其他运行时配置时，将 srvx Server 配置作为第二个参数传入：
 
 ```typescript
-// 使用端口 0 进行自动端口分配
-const server = createAppServer({
-  port: 0,
+const server = createServer(
+  {
+    routes: {
+      '/hello': () => '你好！'
+    }
+  },
+  {
+    hostname: '127.0.0.1',
+    port: 3000
+  }
+)
+```
+
+创建 controller 不会立即启动服务，只有调用 `listen()` 后才会开始监听。
+
+## 路由
+
+直接传入的路由处理函数默认响应 GET 请求：
+
+```typescript
+const server = createServer({
   routes: {
-    '/api/ping': () => 'pong'
+    '/ping': () => 'pong'
   }
 })
-
-await server.listen()
-console.log(`服务器运行在 ${server.url}`) // 例如: http://localhost:54321/
-console.log(`端口: ${server.port}`) // 例如: 54321
 ```
 
-## 🎯 核心概念
-
-### 路由
-
-路由定义 HTTP 端点及其处理程序。你可以使用简单的处理程序或详细的路由配置。
-
-#### 简单处理程序(所有方法)
+使用方法名配置其他 HTTP 方法，使用 `ALL` 匹配全部方法，使用 `children`
+组织嵌套路由：
 
 ```typescript
-const routes = {
-  '/api/ping': (event) => 'pong'
-}
-```
+import { readBody } from 'h3'
+import { createServer } from 'k3-server'
 
-#### 特定方法处理程序
-
-```typescript
-const routes = {
-  '/api/users': {
-    GET: (event) => [
-      { id: 1, name: 'John' },
-      { id: 2, name: 'Jane' }
-    ],
-    POST: async (event) => {
-      const body = await readBody(event)
-      return { id: 3, ...body }
-    },
-    DELETE: (event) => {
-      return { success: true }
-    }
-  }
-}
-```
-
-#### 嵌套路由
-
-```typescript
-const routes = {
-  '/api': {
-    GET: (event) => 'API Root',
-    children: {
-      '/users': {
-        GET: (event) => 'List users',
-        children: {
-          '/:id': {
-            GET: (event) => `Get user ${event.context.params.id}`,
-            DELETE: (event) => `Delete user ${event.context.params.id}`
+const server = createServer({
+  routes: {
+    '/api': {
+      children: {
+        '/users': {
+          GET: () => [{ id: 1, name: 'Alice' }],
+          POST: async (event) => ({
+            id: 2,
+            ...(await readBody(event))
+          }),
+          children: {
+            '/:id': {
+              GET: (event) => ({
+                id: event.context.params.id
+              })
+            }
           }
         }
       }
+    },
+    '/all': {
+      ALL: (event) => ({
+        method: event.req.method
+      })
     }
   }
-}
+})
 ```
 
-#### 路由选项
+H3 路由选项可以直接与 `handler` 平级：
 
 ```typescript
 const routes = {
-  '/api/meta': {
-    GET: {
-      handler: (event) => 'meta options',
-      options: {
-        meta: { name: 'king3' }
-      }
+  '/users': {
+    POST: {
+      handler: createUser,
+      meta: { name: 'create-user' },
+      middleware: [requireAuth]
     }
   }
 }
 ```
 
-### 中间件
-
-中间件是在路由处理程序之前运行的函数,对于日志记录、身份验证、CORS 等非常有用。
-
-#### 全局中间件
+`defineRoutes()` 是一个 identity helper，用于为单独定义的路由提供类型推导。
+直接写在 `createServer()` 中的 routes 已经具备类型提示。
 
 ```typescript
-const middlewares = [
-  (event, next) => {
-    console.log(`${event.method} ${event.path}`)
-    return next()
-  }
-]
+import { defineRoutes } from 'k3-server'
+
+const routes = defineRoutes({
+  '/health': () => 'ok'
+})
 ```
 
-#### 路由特定中间件
+## H3 集成
+
+可以通过 `server.app` 访问 H3 App，并在调用 `listen()` 前注册 H3 原生路由和
+middleware：
 
 ```typescript
-const middlewares = [
-  {
-    route: '/api',
-    handler: (event, next) => {
-      console.log('访问 API 路由')
-      return next()
-    }
-  }
-]
+import { createServer } from 'k3-server'
+
+const server = createServer()
+
+server.app.get('/hello', () => 'Hello from H3')
+server.app.post('/users', createUser)
+server.app.use(requestLogger)
+
+await server.listen()
 ```
 
-#### 带选项的中间件
+声明式路由和 H3 原生 API 可以同时使用。
+
+如果需要单独配置 App，或者将已有 H3 App 传给 `createServer()`，可以使用
+`createApp()`：
 
 ```typescript
-const middlewares = [
+import { createApp, createServer } from 'k3-server'
+
+const app = createApp({
+  debug: true,
+  routes: {
+    '/hello': () => '你好！'
+  }
+})
+
+app.get('/health', () => 'ok')
+
+const server = createServer(app, { port: 3000 })
+await server.listen()
+```
+
+`AppOptions` 扩展自 H3 原生 `H3Config`，因此可以直接传入 `plugins`、
+`onRequest`、`onResponse` 和 `onError` 等 H3 配置。
+
+## 中间件
+
+可以直接传入 middleware，也可以为其指定路径和 H3 middleware options：
+
+```typescript
+import { createServer, defineMiddleware, defineMiddlewares } from 'k3-server'
+
+const requestLogger = defineMiddleware(async (event, next) => {
+  console.log(event.req.method, event.url.pathname)
+  return next()
+})
+
+const middlewares = defineMiddlewares([
+  requestLogger,
   {
+    route: '/api/**',
     handler: (event, next) => next(),
     options: {
       method: 'POST'
     }
   }
-]
+])
+
+const server = createServer({ middlewares })
 ```
 
-### 插件
-
-插件使用 H3 的插件系统扩展服务器的功能。
-
-```typescript
-import { definePlugin } from 'better-mock-server'
-
-const loggerPlugin = definePlugin((h3, _options) => {
-  if (h3.config.debug) {
-    h3.use((req) => {
-      console.log(`[${req.method}] ${req.url}`)
-    })
-  }
-})
-
-const server = createAppServer({
-  routes: {
-    /* ... */
-  },
-  plugins: [loggerPlugin]
-})
-
-await server.listen()
-```
-
-## 📚 API 参考
-
-### 服务器函数
-
-#### `createAppServer(options)`
-
-创建一个配置好的 HTTP 服务器应用程序。
-
-**参数:**
-
-- `options.routes` (必需): 路由配置
-- `options.middlewares` (可选): 中间件数组
-- `options.plugins` (可选): 插件数组
-- `options.port` (可选): 端口号(默认: 0 表示随机端口)
-- `options.hostname` (可选): 主机名(默认: 'localhost')
-- `options.protocol` (可选): 协议(默认: 'http')
-
-**返回值:** `AppServer` 对象
-
-**AppServer 属性:**
-
-- `raw`: 原始 H3 服务器实例
-- `app`: H3 应用程序实例
-- `port`: 服务器端口号(`listen()` 后可用)
-- `url`: 服务器 URL(`listen()` 后可用)
-- `listen(port?)`: 启动服务器的异步函数。重复调用时会自动关闭上一个服务器
-- `close()`: 关闭服务器的异步函数
-- `restart(port?)`: 重启服务器的异步函数。不传端口时使用上次 listen 的端口
-
-**示例:**
-
-```typescript
-const server = createAppServer({
-  port: 3000,
-  routes: {
-    '/api/hello': () => 'Hello'
-  }
-})
-
-await server.listen()
-console.log(`运行在 ${server.url}`)
-
-// 或在监听时覆盖端口
-await server.listen(4000)
-
-// 清理
-await server.close()
-```
-
-#### `createApp(options)`
-
-创建一个 H3 应用程序实例而不启动服务器。当你想与现有服务器设置集成时很有用。
-
-**参数:**
-
-- `options.routes` (可选): 路由配置
-- `options.middlewares` (可选): 中间件数组
-- `options.plugins` (可选): 插件数组
-
-**返回值:** H3 应用程序实例
-
-**示例:**
-
-```typescript
-import { createApp } from 'better-mock-server'
-import { serve } from 'h3'
-
-const app = createApp({
-  routes: {
-    '/api/hello': () => 'Hello'
-  }
-})
-
-// 使用你自己的服务器配置
-const server = serve(app, { port: 4000 })
-await server.ready()
-console.log(`服务器运行在 ${server.url}`)
-```
-
-### 路由函数
-
-#### `defineRoutes(routes)`
-
-提供类型安全的路由定义和 IDE 自动补全。
-
-**示例:**
-
-```typescript
-import { defineRoutes } from 'better-mock-server'
-
-const routes = defineRoutes({
-  '/api/users': {
-    GET: () => [],
-    POST: async (event) => {
-      const body = await readBody(event)
-      return body
-    }
-  }
-})
-```
-
-#### `parseRoutes(routes, basePath?)`
-
-将嵌套的路由结构解析为扁平的路由定义数组。主要供内部使用。
-
-**参数:**
-
-- `routes`: 路由配置对象
-- `basePath` (可选): 嵌套路由的基础路径
-
-**返回值:** 解析后的路由对象数组
-
-#### `registerRoutes(app, routes?)`
-
-将路由注册到 H3 应用程序实例。
-
-**参数:**
-
-- `app`: H3 应用程序实例
-- `routes` (可选): 路由配置
-
-### 中间件函数
-
-#### `defineMiddleware(input)`
-
-定义具有类型安全的中间件。接受函数或配置对象。
-
-**示例:**
-
-```typescript
-import { defineMiddleware } from 'better-mock-server'
-
-// 使用函数
-const mw1 = defineMiddleware((event, next) => {
-  console.log('中间件')
-  return next()
-})
-
-// 使用配置
-const mw2 = defineMiddleware({
-  route: '/api',
-  handler: (event, next) => next(),
-  options: { method: 'POST' }
-})
-```
-
-#### `parseMiddlewares(middlewares)`
-
-将中间件配置解析为标准化的元组格式。主要供内部使用。
-
-**参数:**
-
-- `middlewares`: 中间件函数或配置数组
-
-**返回值:** 解析后的中间件元组数组
-
-#### `registerMiddlewares(app, middlewares?)`
-
-将中间件注册到 H3 应用程序实例。
-
-**参数:**
-
-- `app`: H3 应用程序实例
-- `middlewares` (可选): 中间件数组
-
-### 插件函数
-
-#### `definePlugin`
-
-为方便起见重新导出 H3 的 `definePlugin`。
-
-**示例:**
-
-```typescript
-import { definePlugin } from 'better-mock-server'
-
-const myPlugin = definePlugin((h3, _options) => {
-  // 插件设置
-})
-```
-
-#### `registerPlugins(app, plugins?)`
-
-将插件注册到 H3 应用程序实例。
-
-**参数:**
-
-- `app`: H3 应用程序实例
-- `plugins` (可选): 插件数组
-
-### 工具函数
-
-#### `buildServerUrl(protocol, hostname, port?)`
-
-从协议、主机名和可选端口构建服务器 URL 字符串。
-自动规范化协议(如果不存在则添加 ':')。
-
-**参数:**
-
-- `protocol`: 协议字符串(例如 'http'、'https'、'http:'、'https:')
-- `hostname`: 主机名或 IP 地址
-- `port` (可选): 端口号或字符串
-
-**返回值:** 完整的 URL 字符串
-
-**示例:**
-
-```typescript
-import { buildServerUrl } from 'better-mock-server'
-
-buildServerUrl('http', 'localhost', 3000)
-// 'http://localhost:3000/'
-
-buildServerUrl('https:', 'example.com', 443)
-// 'https://example.com:443/'
-
-buildServerUrl('http', '127.0.0.1')
-// 'http://127.0.0.1/'
-
-buildServerUrl('http', '::1', 8080)
-// 'http://[::1]:8080/'
-```
-
-#### `joinPaths(...paths)`
-
-将多个路径段连接成一个规范化的路径。
-
-**示例:**
-
-```typescript
-import { joinPaths } from 'better-mock-server'
-
-joinPaths('/api', 'users') // '/api/users'
-joinPaths('/api/', '/users/') // '/api/users'
-joinPaths('api', '', 'users') // 'api/users'
-```
-
-## 📝 类型定义
-
-### 路由类型
-
-```typescript
-import type { EventHandler, RouteOptions } from 'h3'
-
-type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-type AllHTTPMethod = 'ALL'
-
-interface RouteHandlerConfig {
-  handler: EventHandler
-  options?: RouteOptions
-}
-
-type RouteHandler = EventHandler | RouteHandlerConfig
-
-interface RouteConfig {
-  GET?: RouteHandler
-  POST?: RouteHandler
-  PUT?: RouteHandler
-  PATCH?: RouteHandler
-  DELETE?: RouteHandler
-  children?: Routes
-}
-
-interface Routes {
-  [route: string]: RouteHandler | RouteConfig
-}
-
-interface ParsedRoute {
-  route: string
-  method: HTTPMethod | AllHTTPMethod
-  handler: EventHandler
-  options?: RouteOptions
-}
-```
-
-### 中间件类型
-
-```typescript
-import type { Middleware, MiddlewareOptions } from 'h3'
-
-interface MiddlewareConfig {
-  route?: string
-  handler: Middleware
-  options?: MiddlewareOptions
-}
-
-type Middlewares = Array<Middleware | MiddlewareConfig>
-
-type ParsedMiddleware =
-  | [Middleware]
-  | [string, Middleware]
-  | [Middleware, MiddlewareOptions]
-  | [string, Middleware, MiddlewareOptions]
-```
-
-### 插件类型
-
-```typescript
-import type { H3Plugin } from 'h3'
-
-type Plugins = H3Plugin[]
-```
-
-### 服务器类型
-
-```typescript
-import type { H3 as H3Instance, serve } from 'h3'
-import type { ServerOptions } from 'srvx'
-
-type Server = ReturnType<typeof serve>
-
-type App = H3Instance
-
-interface AppOptions {
-  routes?: Routes
-  middlewares?: Middlewares
-  plugins?: Plugins
-}
-
-type srvxServerOptions = Omit<ServerOptions, 'fetch' | 'middleware' | 'plugins'>
-
-interface AppServerOptions extends AppOptions, srvxServerOptions {
-  routes: Routes
-}
-
-interface AppServer {
-  raw: Server | undefined
-  app: App
-  port: number | string | undefined
-  url: string | undefined
-  listen: (listenPort?: number) => Promise<void>
-  close: () => Promise<void>
-  restart: (listenPort?: number) => Promise<void>
-}
-```
-
-## 💡 完整示例
-
-```typescript
-import {
-  createAppServer,
-  defineMiddleware,
-  definePlugin
-} from 'better-mock-server'
-import { readBody } from 'h3'
-
-// 定义日志中间件
-const logger = defineMiddleware((event, next) => {
-  console.log(`[${new Date().toISOString()}] ${event.method} ${event.path}`)
-  return next()
-})
-
-// 定义自定义插件
-const corsPlugin = definePlugin((h3, _options) => {
-  // CORS 设置逻辑
-})
-
-// 使用完整配置创建服务器
-const server = createAppServer({
-  port: 3000,
-
-  plugins: [corsPlugin],
-
-  middlewares: [
-    logger,
-    {
-      route: '/api',
-      handler: (event, next) => {
-        event.context.apiAccess = true
-        return next()
-      }
-    }
-  ],
-
-  routes: {
-    '/': () => '欢迎使用 Better Mock Server!',
-
-    '/api': {
-      GET: () => ({ version: '1.0.0' }),
-
-      children: {
-        '/users': {
-          GET: () => [
-            { id: 1, name: 'Alice', email: 'alice@example.com' },
-            { id: 2, name: 'Bob', email: 'bob@example.com' }
-          ],
-
-          POST: async (event) => {
-            const body = await readBody(event)
-            return {
-              id: Date.now(),
-              ...body,
-              createdAt: new Date().toISOString()
-            }
-          },
-
-          children: {
-            '/:id': {
-              GET: (event) => {
-                const id = event.context.params.id
-                return {
-                  id,
-                  name: `User ${id}`,
-                  email: `user${id}@example.com`
-                }
-              },
-
-              PUT: async (event) => {
-                const id = event.context.params.id
-                const body = await readBody(event)
-                return {
-                  id,
-                  ...body,
-                  updatedAt: new Date().toISOString()
-                }
-              },
-
-              DELETE: (event) => {
-                const id = event.context.params.id
-                return {
-                  success: true,
-                  deletedId: id
-                }
-              }
-            }
-          }
-        },
-
-        '/posts': {
-          GET: () => [
-            { id: 1, title: '第一篇文章', content: 'Hello World' },
-            { id: 2, title: '第二篇文章', content: 'TypeScript 很棒' }
-          ]
-        }
-      }
-    }
-  }
-})
-
-await server.listen()
-console.log(`🚀 服务器运行在 ${server.url}`)
-
-// 优雅关闭
-process.on('SIGINT', async () => {
-  console.log('\n👋 正在关闭...')
-  await server.close()
-  process.exit(0)
-})
-```
-
-## ✅ 最佳实践
-
-### 1. 使用端口 0 进行测试
-
-让系统自动分配可用端口:
-
-```typescript
-const server = createAppServer({
-  port: 0, // 随机端口
-  routes: {
-    /* ... */
-  }
-})
-await server.listen()
-console.log(`测试服务器运行在端口 ${server.port}`)
-```
-
-### 2. 使用 `defineRoutes` 获得类型安全
-
-始终使用 `defineRoutes()` 包装你的路由以获得更好的 IDE 支持和类型检查。
-
-### 3. 顺序很重要
-
-中间件和路由按照它们出现的顺序注册。将全局中间件放在路由特定中间件之前。
-
-### 4. 异步处理程序
-
-处理请求体或异步操作时,始终使用异步处理程序:
-
-```typescript
-;async (event) => {
-  const body = await readBody(event)
-  return body
-}
-```
-
-### 5. 错误处理
-
-使用 H3 的错误处理工具:
-
-```typescript
-import { createError } from 'h3'
-;(event) => {
-  throw createError({
-    statusCode: 404,
-    message: '用户未找到'
-  })
-}
-```
-
-### 6. 路径参数
-
-通过 `event.context.params` 访问路由参数:
+middleware 按注册顺序执行。仅属于单个路由的逻辑应使用 route middleware：
 
 ```typescript
 const routes = {
-  '/:id': {
-    GET: (event) => {
-      const id = event.context.params.id
-      return { id }
+  '/secret': {
+    GET: {
+      handler: secretHandler,
+      middleware: [requireAuth]
     }
   }
 }
 ```
 
-### 7. 嵌套路由
+middleware 行为和生命周期工具可以参考
+[H3 middleware 文档](https://h3.dev/guide/basics/middleware)。
 
-使用 `children` 属性以获得更好的组织:
+## 插件
+
+`definePlugin` 直接从 H3 重新导出：
 
 ```typescript
-const routes = {
-  '/api': {
-    children: {
-      '/users': {
-        /* ... */
-      },
-      '/posts': {
-        /* ... */
-      }
-    }
-  }
-}
+import { createServer, definePlugin } from 'k3-server'
+
+const healthPlugin = definePlugin((app) => {
+  app.get('/health', () => 'ok')
+})()
+
+const server = createServer({
+  plugins: [healthPlugin]
+})
 ```
 
-## ⚠️ 约束和限制
+第一个参数中的 plugins 是 H3 App plugins；第二个 `serverOptions` 参数中的
+plugins 是 srvx Server plugins。
 
-- 该库基于 H3 构建,因此适用所有 H3 的限制
-- 路由定义必须在服务器启动时已知(不支持动态路由注册)
-- 中间件执行顺序遵循注册顺序
-- 端口 0 将分配一个随机可用端口
+更多说明可以参考 [H3 plugin 文档](https://h3.dev/guide/advanced/plugins)。
 
-## 📄 许可证
+## API
 
-[MIT](./LICENSE) 许可证 © 2025-至今 [king3](https://github.com/coderking3)
+### `createServer(appOrOptions?, serverOptions?)`
 
-## 🤝 贡献
+创建同步 Server controller，但不会立即启动 HTTP 监听。
 
-欢迎贡献、问题和功能请求!
+- `appOrOptions`：已有 H3 App 或声明式 `AppOptions`
+- `serverOptions`：除 `fetch` 和 `manual` 外的 srvx 配置
+- 默认端口：`0`
+- 默认 hostname：`127.0.0.1`
 
-请随时查看 [issues 页面](https://github.com/OpenKnights/better-mock-server/issues)。
+返回的 controller 包含：
 
-## 🔗 相关项目
+- `app`：H3 App
+- `raw`：监听后创建的 srvx Server
+- `port`：监听后解析出的实际端口
+- `url`：监听后解析出的实际 URL
+- `listen(port?)`：开始监听
+- `close()`：停止监听并清理运行时状态
 
-- [unjs/h3](https://github.com/unjs/h3) - 精简的 H3 HTTP 框架
-- [unjs/srvx](https://github.com/unjs/srvx) - 基于 Web 标准的通用服务器
-- [unjs](https://unjs.io) - 统一的 JavaScript 工具
+服务运行时重复调用 `listen()` 会抛出错误，需要先关闭服务再重新监听。
+
+### `createApp(options?)`
+
+使用 H3 原生配置以及声明式 `routes`、`middlewares` 创建 H3 App。
+
+### 配置辅助函数
+
+- `defineRoutes(routes)`：为单独定义的 routes 提供类型提示
+- `defineMiddlewares(middlewares)`：为单独定义的 middlewares 提供类型提示
+- `defineMiddleware`：从 H3 重新导出
+- `definePlugin`：从 H3 重新导出
+
+更完整的实际用法可以参考 [playground/server.ts](./playground/server.ts)。
+
+## 注意事项
+
+- 在调用 `listen()` 前注册 routes、middleware 和 plugins。
+- 服务不再使用时应调用 `close()`。
+- H3 App 初始化后不能继续添加路由。
+
+## 相关项目
+
+- [unjs/h3](https://github.com/unjs/h3) — 轻量级 HTTP 框架
+- [h3js/srvx](https://github.com/h3js/srvx) — 通用 Server runtime
+
+## 许可证
+
+[MIT](./LICENSE) © 2025-至今 [king3](https://github.com/coderking3)

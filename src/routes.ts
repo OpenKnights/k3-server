@@ -1,20 +1,51 @@
 import type {
   ParsedRoute,
   RouteConfig,
+  RouteHandler,
   RouteHandlerConfig,
+  RouteMethod,
   Routes
 } from '#types/routes'
 import type { App } from '#types/server'
-import type { EventHandler } from 'h3'
+import type { HTTPHandler } from 'h3'
 
-import { ALL_HTTP_METHOD, HTTP_METHODS } from './constants'
-import { isHandlerConfig, isObject, joinPaths } from './util'
+import {
+  ALL_HTTP_METHOD,
+  DEFAULT_HTTP_METHOD,
+  ROUTE_METHODS
+} from './constants'
+import { isObject, joinPaths } from './util'
+
+/**
+ * Checks whether a value is accepted by H3 as an HTTP handler.
+ */
+function isHTTPHandler(handler: unknown): handler is HTTPHandler {
+  return (
+    typeof handler === 'function' ||
+    (handler !== null &&
+      typeof handler === 'object' &&
+      'fetch' in handler &&
+      typeof handler.fetch === 'function')
+  )
+}
 
 /**
  * Checks if the given configuration object is a valid RouteHandlerConfig.
  */
 function isRouteHandlerConfig(config: unknown): config is RouteHandlerConfig {
-  return isHandlerConfig<RouteHandlerConfig>(config)
+  return (
+    isObject(config) &&
+    'handler' in config &&
+    Object.hasOwn(config, 'handler') &&
+    isHTTPHandler(config.handler)
+  )
+}
+
+/**
+ * Checks whether a value is a direct or configured route handler.
+ */
+function isRouteHandler(config: unknown): config is RouteHandler {
+  return isRouteHandlerConfig(config) || isHTTPHandler(config)
 }
 
 /**
@@ -22,17 +53,41 @@ function isRouteHandlerConfig(config: unknown): config is RouteHandlerConfig {
  * A RouteConfig must have at least one HTTP method property or a children property.
  */
 function isRouteConfig(config: unknown): config is RouteConfig {
-  if (!isObject(config)) return false
+  if (!isObject(config) || isRouteHandler(config)) return false
 
   const cfg = config as RouteConfig
-  return (
-    cfg.GET !== undefined ||
-    cfg.POST !== undefined ||
-    cfg.PUT !== undefined ||
-    cfg.PATCH !== undefined ||
-    cfg.DELETE !== undefined ||
-    cfg.children !== undefined
+  return Boolean(
+    (Object.hasOwn(cfg, 'children') && cfg.children !== undefined) ||
+    ROUTE_METHODS.some(
+      (method) => Object.hasOwn(cfg, method) && cfg[method] !== undefined
+    )
   )
+}
+
+/**
+ * Parses an HTTPHandler or a handler with flattened H3 route options.
+ */
+function parseRouteHandler(
+  route: string,
+  method: RouteMethod,
+  routeHandler: RouteHandler
+): ParsedRoute {
+  if (!isRouteHandlerConfig(routeHandler)) {
+    return {
+      route,
+      method,
+      handler: routeHandler
+    }
+  }
+
+  const { handler, ...options } = routeHandler
+
+  return {
+    route,
+    method,
+    handler,
+    ...(Object.keys(options).length > 0 && { options })
+  }
 }
 
 /**
@@ -46,41 +101,41 @@ function parseRoutes(routes: Routes, basePath = ''): ParsedRoute[] {
   for (const [path, config] of Object.entries(routes)) {
     const fullPath = joinPaths(basePath, path)
 
-    if (isRouteConfig(config)) {
+    if (isRouteHandler(config)) {
+      // A direct handler uses GET by default.
+      parsedRoutes.push(
+        parseRouteHandler(fullPath, DEFAULT_HTTP_METHOD, config)
+      )
+    } else if (isRouteConfig(config)) {
       // Process RouteConfig type
 
-      for (const method of HTTP_METHODS) {
+      for (const method of ROUTE_METHODS) {
         const methodConfig = config[method]
-        if (methodConfig) {
-          // Handle HandlerConfig or direct RouteHandler
-          if (isRouteHandlerConfig(methodConfig)) {
-            parsedRoutes.push({
-              route: fullPath,
-              method,
-              handler: methodConfig.handler,
-              options: methodConfig.options
-            })
-          } else {
-            parsedRoutes.push({
-              route: fullPath,
-              method,
-              handler: methodConfig
-            })
-          }
+        if (methodConfig === undefined) continue
+
+        if (!isRouteHandler(methodConfig)) {
+          throw new TypeError(
+            `[k3-server] Invalid route handler for ${method} ${fullPath}.`
+          )
         }
+
+        parsedRoutes.push(parseRouteHandler(fullPath, method, methodConfig))
       }
 
       // Recursively process child routes
-      if (config.children) {
+      if (config.children !== undefined) {
+        if (!isObject(config.children)) {
+          throw new TypeError(
+            `[k3-server] Invalid children for route ${fullPath}.`
+          )
+        }
+
         parsedRoutes.push(...parseRoutes(config.children, fullPath))
       }
     } else {
-      // Process RouteHandler type (matches all methods)
-      parsedRoutes.push({
-        route: fullPath,
-        method: ALL_HTTP_METHOD,
-        handler: config as EventHandler
-      })
+      throw new TypeError(
+        `[k3-server] Invalid route configuration for ${fullPath}.`
+      )
     }
   }
 
@@ -114,7 +169,9 @@ function registerRoutes(app: App, routes?: Routes): void {
 
 export {
   defineRoutes,
+  isHTTPHandler,
   isRouteConfig,
+  isRouteHandler,
   isRouteHandlerConfig,
   parseRoutes,
   registerRoutes

@@ -1,15 +1,11 @@
-import type { H3 as H3Instance, serve } from 'h3'
-import type { ServerOptions } from 'srvx'
+import type { H3Config, H3 as H3Instance } from 'h3'
+import type {
+  Server as SrvxServer,
+  ServerOptions as SrvxServerOptions
+} from 'srvx'
 
 import type { Middlewares } from './middlewares'
-import type { Plugins } from './plugins'
 import type { Routes } from './routes'
-
-/**
- * The raw server instance returned by H3's serve function.
- * This is the underlying HTTP server that can be used for advanced configurations.
- */
-type Server = ReturnType<typeof serve>
 
 /**
  * H3 application instance.
@@ -21,36 +17,32 @@ type App = H3Instance
  * Configuration options for creating an H3 application.
  * All options are optional, allowing for flexible application setup.
  */
-interface AppOptions {
+interface AppOptions extends H3Config {
   routes?: Routes
   middlewares?: Middlewares
-  plugins?: Plugins
 }
 
 /**
- * srvx server options without fetch, middleware, and plugins.
- * These are handled internally by the application.
+ * Input accepted by createServer for constructing or reusing an H3 app.
  */
-type srvxServerOptions = Omit<ServerOptions, 'fetch' | 'middleware' | 'plugins'>
+type AppInput = App | AppOptions
 
 /**
- * Configuration options for creating and starting an HTTP server.
- * Extends AppOptions with srvx server-specific settings.
+ * srvx server options managed by k3-server.
+ * H3 provides the fetch handler and k3-server controls when listening starts.
  */
-interface AppServerOptions extends AppOptions, srvxServerOptions {
-  routes: Routes
-}
+type ServerOptions = Omit<SrvxServerOptions, 'fetch' | 'manual'>
 
 /**
  * Application server instance with server information and control methods.
  */
-interface AppServer {
+interface Server {
   /**
-   * The raw H3 server instance returned by serve().
+   * The raw srvx server instance returned by H3's serve().
    * Provides access to low-level server operations and configuration.
    * Undefined until `listen()` is called.
    */
-  raw: Server | undefined
+  raw: SrvxServer | undefined
 
   /**
    * The H3 application instance.
@@ -61,9 +53,8 @@ interface AppServer {
   /**
    * The port number the server is listening on.
    * Undefined until `listen()` is called successfully.
-   * Can be a number or string depending on configuration.
    */
-  port: number | string | undefined
+  port: number | undefined
 
   /**
    * The full URL where the server can be accessed.
@@ -73,12 +64,14 @@ interface AppServer {
   url: string | undefined
 
   /**
-   * Starts the mock server on the specified port.
+   * Starts the server on the specified port.
    * Uses H3's serve() method internally to start the HTTP server.
+   * Returns this server controller after listening successfully.
+   * Throws if the server has already been started.
    *
    * @param {number} [listenPort] - Optional port to override the default
    */
-  listen: (listenPort?: number) => Promise<void>
+  listen: (listenPort?: number) => Promise<Server>
 
   /**
    * Async function to gracefully close the server.
@@ -86,21 +79,6 @@ interface AppServer {
    * Resets port, url, and raw to undefined after closing.
    */
   close: () => Promise<void>
-
-  /**
-   * Restarts the server by closing and re-listening.
-   * Optionally accepts a new port to listen on.
-   *
-   * @param {number} [listenPort] - Optional port to override the default
-   */
-  restart: (listenPort?: number) => Promise<void>
 }
 
-export {
-  App,
-  AppOptions,
-  AppServer,
-  AppServerOptions,
-  Server,
-  srvxServerOptions
-}
+export { App, AppInput, AppOptions, Server, ServerOptions, SrvxServer }

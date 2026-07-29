@@ -4,15 +4,18 @@ import type {
   ParsedMiddleware
 } from '#types/middlewares'
 import type { App } from '#types/server'
-import type { Middleware } from 'h3'
 
-import { isEmptyArray, isHandlerConfig } from './util'
+import { isEmptyArray, isObject } from './util'
 
 /**
  * Checks if the given configuration object is a valid MiddlewareConfig.
  */
 function isMiddlewareConfig(config: unknown): config is MiddlewareConfig {
-  return isHandlerConfig<MiddlewareConfig>(config)
+  return (
+    isObject(config) &&
+    'handler' in config &&
+    typeof config.handler === 'function'
+  )
 }
 
 /**
@@ -47,22 +50,10 @@ function parseMiddlewares(middlewares: Middlewares): ParsedMiddleware[] {
 }
 
 /**
- * Defines a middleware configuration with type safety.
- * Accepts either a raw middleware function or a full configuration object.
+ * Defines a middleware configuration array with type safety and auto-completion.
+ * This is an identity function for configurations consumed by parseMiddlewares.
  */
-function defineMiddleware(middleware: Middleware): { handler: Middleware }
-function defineMiddleware(config: MiddlewareConfig): MiddlewareConfig
-function defineMiddleware(
-  input: Middleware | MiddlewareConfig
-): { handler: Middleware } | MiddlewareConfig {
-  // If it's a function, wrap it in an object
-  if (typeof input === 'function') {
-    return { handler: input }
-  }
-
-  // If it's a config object, return directly
-  return input
-}
+const defineMiddlewares = (middlewares: Middlewares): Middlewares => middlewares
 
 /**
  * Registers all middlewares to an H3 application instance.
@@ -81,7 +72,7 @@ function registerMiddlewares(app: App, middlewares?: Middlewares): void {
 }
 
 export {
-  defineMiddleware,
+  defineMiddlewares,
   isMiddlewareConfig,
   parseMiddlewares,
   registerMiddlewares
