@@ -1,7 +1,7 @@
 {
   "name": "k3-server",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A lightweight, TypeScript-first HTTP server factory powered by unjs/h3.",
   "author": "king-3 <w2196592083@gmail.com>",
   "license": "MIT",
