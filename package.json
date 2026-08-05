@@ -57,8 +57,8 @@
     "srvx": "^0.12.4"
   },
   "devDependencies": {
-    "@king-3/eslint-config": "^6.1.0",
-    "@king3/prettier-config": "^1.0.0",
+    "@king3/eslint-config": "^7.1.1",
+    "@king3/prettier-config": "^2.1.1",
     "@prettier/plugin-oxc": "^0.2.2",
     "@types/node": "^26.1.2",
     "bumpp": "^12.1.1",
