@@ -18,9 +18,9 @@ importers:
       '@king-3/eslint-config':
         specifier: ^6.1.0
         version: 6.1.0(@typescript-eslint/typescript-estree@8.65.0(typescript@6.0.3))(@typescript-eslint/utils@8.65.0(eslint@10.8.0(jiti@2.6.1))(typescript@6.0.3))(eslint@10.8.0(jiti@2.6.1))(typescript@6.0.3)
-      '@king-3/prettier-config':
-        specifier: ^3.4.0
-        version: 3.4.0
+      '@king3/prettier-config':
+        specifier: ^1.0.0
+        version: 1.0.0(prettier@3.9.6)
       '@prettier/plugin-oxc':
         specifier: ^0.2.2
         version: 0.2.2
@@ -524,8 +524,10 @@ packages:
       eslint-plugin-react-refresh:
         optional: true
 
-  '@king-3/prettier-config@3.4.0':
-    resolution: {integrity: sha512-4iXaOdbBHtetcQkqkAINuTGOEF/TINZkYFNsSUFxrPxYDTa0SWJQyutWxmV/FF9WOCb4hjPiYacGpovzuXU0UA==}
+  '@king3/prettier-config@1.0.0':
+    resolution: {integrity: sha512-ouEFzeGphGE0yOYBa+LcvBca3qom4SmvyOZLV2D3VYU+HZJAb8QQL61KoYUyej+2IA/04EV0NduZoAfteFdk+w==, tarball: https://registry.npmjs.org/@king3/prettier-config/-/prettier-config-1.0.0.tgz}
+    peerDependencies:
+      prettier: ^3.9.6
 
   '@napi-rs/wasm-runtime@1.2.0':
     resolution: {integrity: sha512-kDoONqMa+VnZ4vvvu/ZUurpJ4gkZU57e7g69qpNgWhYcZFPUHZM2CEMKm+cG6ufDVALbjMvfmMjFVqaK7uEMnA==}
@@ -2800,7 +2802,10 @@ snapshots:
       - supports-color
       - typescript
 
-  '@king-3/prettier-config@3.4.0': {}
+  '@king3/prettier-config@1.0.0(prettier@3.9.6)':
+    dependencies:
+      '@prettier/plugin-oxc': 0.2.2
+      prettier: 3.9.6
 
   '@napi-rs/wasm-runtime@1.2.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:
