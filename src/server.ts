@@ -62,11 +62,11 @@ function createServer(
     listen: async (listenPort?: number): Promise<Server> => {
       if (state === 'listening') {
         throw new Error(
-          '[k3-server] Server is already listening. Close it before listening again.'
+          '[katro] Server is already listening. Close it before listening again.'
         )
       }
       if (state !== 'idle') {
-        throw new Error(`[k3-server] Cannot listen while server is ${state}.`)
+        throw new Error(`[katro] Cannot listen while server is ${state}.`)
       }
 
       const targetPort = listenPort ?? port
@@ -85,7 +85,7 @@ function createServer(
         await raw.ready()
 
         if (!raw.url) {
-          throw new Error('[k3-server] Server started without a listening URL.')
+          throw new Error('[katro] Server started without a listening URL.')
         }
 
         const rawUrl = new URL(raw.url)
@@ -122,7 +122,7 @@ function createServer(
      */
     close: async (): Promise<void> => {
       if (state === 'starting' || state === 'closing') {
-        throw new Error(`[k3-server] Cannot close while server is ${state}.`)
+        throw new Error(`[katro] Cannot close while server is ${state}.`)
       }
       if (state === 'idle') {
         resetServerState(server)
@@ -179,11 +179,11 @@ function resolveServerPort(url: URL): number {
     return 443
   }
 
-  throw new Error(`[k3-server] Unsupported server protocol: ${url.protocol}`)
+  throw new Error(`[katro] Unsupported server protocol: ${url.protocol}`)
 }
 
 /**
- * Removes srvx options controlled internally by H3 and k3-server.
+ * Removes srvx options controlled internally by H3 and Katro.
  * Runtime filtering is required because extra properties can bypass Omit types.
  */
 function filterServerOptions(options: ServerOptions): ServerOptions {

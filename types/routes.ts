@@ -12,11 +12,19 @@ type AllHTTPMethod = 'ALL'
 type RouteMethod = HTTPMethod | AllHTTPMethod
 
 /**
+ * H3 route options supported by configured route handlers.
+ */
+type SupportedRouteOptions = Pick<RouteOptions, 'middleware' | 'meta'>
+
+/**
  * An H3 HTTP handler with route options at the same level.
+ * Cannot be combined with children or HTTP method keys.
  */
 type RouteHandlerConfig = {
   handler: HTTPHandler
-} & RouteOptions
+  children?: never
+} & SupportedRouteOptions &
+  Partial<Record<RouteMethod, never>>
 
 /**
  * A route handler can be any handler accepted by H3 or a configuration object
@@ -39,7 +47,11 @@ type RouteConfig = RequireAtLeastOne<
   Partial<Record<RouteMethod, RouteHandler>> & {
     children?: Routes
   }
->
+> & {
+  handler?: never
+  middleware?: never
+  meta?: never
+}
 
 /**
  * Routes definition object mapping URL paths to handlers or configurations.

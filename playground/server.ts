@@ -67,11 +67,13 @@ const playgroundPlugin = definePlugin((app) => {
 const routes = defineRoutes({
   // A direct handler is registered as GET by default.
   '/': () => ({
-    name: 'k3-server playground',
+    name: 'Katro playground',
     endpoints: [
       'GET /api/hello',
       'POST /api/hello',
       'GET /api/users/:id?active=true',
+      'GET /users/list',
+      'GET /users/:id',
       'GET /redirect',
       'ANY /all',
       'GET /plugin',
@@ -119,6 +121,19 @@ const routes = defineRoutes({
       method: event.req.method,
       message: 'This route accepts every HTTP method.'
     })
+  },
+
+  '/users': {
+    GET: () => [{ id: 1, name: 'Alice' }],
+    children: {
+      '/list': () => [{ id: 11, name: 'Jike' }],
+      '/:id': (event) => [
+        {
+          id: event.context.params?.id,
+          name: 'Jike'
+        }
+      ]
+    }
   }
 })
 
@@ -153,7 +168,7 @@ const method = (name: string, color: string) =>
   `${ansi.bold}${color}${name.padEnd(5)}${ansi.reset}`
 
 console.log(`
-${ansi.bold}${ansi.green}╭─ k3-server playground${ansi.reset}
+${ansi.bold}${ansi.green}╭─ Katro playground${ansi.reset}
 ${ansi.green}│${ansi.reset}  ${ansi.dim}Listening on${ansi.reset}  ${ansi.cyan}${server.url}${ansi.reset}
 ${ansi.green}╰─ Ready${ansi.reset}
 
@@ -162,6 +177,8 @@ ${ansi.bold}${ansi.yellow}Try these commands${ansi.reset}
   ${method('GET', ansi.green)} curl -s http://127.0.0.1:${PORT}/api/hello | jq
   ${method('POST', ansi.yellow)} curl -s -X POST -H "content-type: application/json" -d '{"name":"king3"}' http://127.0.0.1:${PORT}/api/hello | jq
   ${method('GET', ansi.green)} curl -s "http://127.0.0.1:${PORT}/api/users/123?active=true" | jq
+  ${method('GET', ansi.green)} curl -s http://127.0.0.1:${PORT}/users/list | jq
+  ${method('GET', ansi.green)} curl -s http://127.0.0.1:${PORT}/users/12 | jq
   ${method('PATCH', ansi.magenta)} curl -s -X PATCH http://127.0.0.1:${PORT}/all | jq
   ${method('GET', ansi.green)} curl -s http://127.0.0.1:${PORT}/plugin | jq
   ${method('GET', ansi.green)} curl -s http://127.0.0.1:${PORT}/h3 | jq

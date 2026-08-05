@@ -1,17 +1,17 @@
 {
-  "name": "k3-server",
+  "name": "katro",
   "type": "module",
-  "version": "2.0.0",
-  "description": "A lightweight, TypeScript-first HTTP server factory powered by unjs/h3.",
-  "author": "king-3 <w2196592083@gmail.com>",
+  "version": "2.1.0",
+  "description": "A lightweight, TypeScript-first library built on unjs/h3 for quickly creating HTTP servers.",
+  "author": "king3 <king3.wm@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/OpenKnights/k3-server#readme",
+  "homepage": "https://github.com/OpenKnights/katro#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OpenKnights/k3-server.git"
+    "url": "git+https://github.com/OpenKnights/katro.git"
   },
   "bugs": {
-    "url": "https://github.com/OpenKnights/k3-server/issues"
+    "url": "https://github.com/OpenKnights/katro/issues"
   },
   "keywords": [
     "http",
@@ -42,7 +42,7 @@
     "node": ">=20.16.0"
   },
   "scripts": {
-    "play": "tsx playground/server.ts",
+    "play": "tsx watch playground/server.ts",
     "build": "tsdown",
     "test": "vitest",
     "format": "prettier --write .",

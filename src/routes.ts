@@ -49,6 +49,17 @@ function isRouteHandler(config: unknown): config is RouteHandler {
 }
 
 /**
+ * Finds route configuration keys that make a plain handler object ambiguous.
+ */
+function findRouteHandlerConflict(
+  config: object
+): RouteMethod | 'children' | undefined {
+  if (Object.hasOwn(config, 'children')) return 'children'
+
+  return ROUTE_METHODS.find((method) => Object.hasOwn(config, method))
+}
+
+/**
  * Checks if the given object is a valid RouteConfig.
  * A RouteConfig must have at least one HTTP method property or a children property.
  */
@@ -72,6 +83,16 @@ function parseRouteHandler(
   method: RouteMethod,
   routeHandler: RouteHandler
 ): ParsedRoute {
+  if (isObject(routeHandler)) {
+    const conflict = findRouteHandlerConflict(routeHandler)
+
+    if (conflict !== undefined) {
+      throw new TypeError(
+        `[katro] Handler configuration for ${method} ${route} cannot include route key "${conflict}". Define children and HTTP methods at the route level instead.`
+      )
+    }
+  }
+
   if (!isRouteHandlerConfig(routeHandler)) {
     return {
       route,
@@ -80,7 +101,11 @@ function parseRouteHandler(
     }
   }
 
-  const { handler, ...options } = routeHandler
+  const { handler, middleware, meta } = routeHandler
+  const options = {
+    ...(middleware !== undefined && { middleware }),
+    ...(meta !== undefined && { meta })
+  }
 
   return {
     route,
@@ -115,7 +140,7 @@ function parseRoutes(routes: Routes, basePath = ''): ParsedRoute[] {
 
         if (!isRouteHandler(methodConfig)) {
           throw new TypeError(
-            `[k3-server] Invalid route handler for ${method} ${fullPath}.`
+            `[katro] Invalid route handler for ${method} ${fullPath}.`
           )
         }
 
@@ -125,16 +150,14 @@ function parseRoutes(routes: Routes, basePath = ''): ParsedRoute[] {
       // Recursively process child routes
       if (config.children !== undefined) {
         if (!isObject(config.children)) {
-          throw new TypeError(
-            `[k3-server] Invalid children for route ${fullPath}.`
-          )
+          throw new TypeError(`[katro] Invalid children for route ${fullPath}.`)
         }
 
         parsedRoutes.push(...parseRoutes(config.children, fullPath))
       }
     } else {
       throw new TypeError(
-        `[k3-server] Invalid route configuration for ${fullPath}.`
+        `[katro] Invalid route configuration for ${fullPath}.`
       )
     }
   }

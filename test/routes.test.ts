@@ -93,20 +93,16 @@ describe('routes', () => {
       })
     })
 
-    it('should prefer a fetchable handler over conflicting config keys', () => {
+    it('should reject a plain fetchable handler with route config keys', () => {
       const handler = {
         fetch: vi.fn(),
-        children: { ignored: true },
-        GET: vi.fn()
+        children: { ignored: true }
       }
       const routes: Routes = { '/api': handler }
-      const result = parseRoutes(routes)
 
-      expect(result[0]).toEqual({
-        route: '/api',
-        method: 'GET',
-        handler
-      })
+      expect(() => parseRoutes(routes)).toThrow(
+        `[katro] Handler configuration for GET /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
+      )
     })
 
     it('should parse an explicit ALL handler with route options', () => {
@@ -151,6 +147,79 @@ describe('routes', () => {
       expect(result[0].options).toEqual(options)
     })
 
+    it('should only pass supported H3 route options', () => {
+      const handler = vi.fn()
+      const middleware = vi.fn()
+      const routes = {
+        '/api': {
+          handler,
+          middleware: [middleware],
+          meta: { name: 'king3' },
+          unsupported: true
+        }
+      } as unknown as Routes
+      const result = parseRoutes(routes)
+
+      expect(result[0].options).toEqual({
+        middleware: [middleware],
+        meta: { name: 'king3' }
+      })
+    })
+
+    it('should reject handler config combined with children', () => {
+      const invalidRoutes = {
+        '/api': {
+          handler: vi.fn(),
+          children: {
+            '/users': vi.fn()
+          }
+        }
+      }
+
+      // @ts-expect-error Handler config and nested route config are exclusive.
+      const routes: Routes = invalidRoutes
+
+      expect(() => parseRoutes(routes)).toThrow(
+        `[katro] Handler configuration for GET /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
+      )
+    })
+
+    it('should reject handler config combined with an HTTP method', () => {
+      const invalidRoutes = {
+        '/api': {
+          handler: vi.fn(),
+          GET: vi.fn()
+        }
+      }
+
+      // @ts-expect-error Handler config and method route config are exclusive.
+      const routes: Routes = invalidRoutes
+
+      expect(() => parseRoutes(routes)).toThrow(
+        `[katro] Handler configuration for GET /api cannot include route key "GET". Define children and HTTP methods at the route level instead.`
+      )
+    })
+
+    it('should reject route config keys inside a method handler config', () => {
+      const invalidRoutes = {
+        '/api': {
+          POST: {
+            handler: vi.fn(),
+            children: {
+              '/users': vi.fn()
+            }
+          }
+        }
+      }
+
+      // @ts-expect-error Method handler config cannot contain child routes.
+      const routes: Routes = invalidRoutes
+
+      expect(() => parseRoutes(routes)).toThrow(
+        `[katro] Handler configuration for POST /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
+      )
+    })
+
     it('should handle nested children routes', () => {
       const handler1 = vi.fn()
       const handler2 = vi.fn()
@@ -175,7 +244,7 @@ describe('routes', () => {
       const routes = { '/api': { GET: 'invalid' } } as unknown as Routes
 
       expect(() => parseRoutes(routes)).toThrow(
-        '[k3-server] Invalid route handler for GET /api.'
+        '[katro] Invalid route handler for GET /api.'
       )
     })
 
@@ -183,7 +252,7 @@ describe('routes', () => {
       const routes = { '/api': { children: null } } as unknown as Routes
 
       expect(() => parseRoutes(routes)).toThrow(
-        '[k3-server] Invalid children for route /api.'
+        '[katro] Invalid children for route /api.'
       )
     })
 
@@ -191,7 +260,7 @@ describe('routes', () => {
       const routes = { '/api': {} } as unknown as Routes
 
       expect(() => parseRoutes(routes)).toThrow(
-        '[k3-server] Invalid route configuration for /api.'
+        '[katro] Invalid route configuration for /api.'
       )
     })
 

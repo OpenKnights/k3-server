@@ -1,9 +1,9 @@
-# AGENTS.md — k3-server
+# AGENTS.md — Katro
 
 ## Project Overview
 
-A lightweight, TypeScript-first tool for quickly creating HTTP servers, powered
-by [unjs/h3](https://github.com/unjs/h3).
+A lightweight, TypeScript-first library built on
+[unjs/h3](https://github.com/unjs/h3) for quickly creating HTTP servers.
 
 ## Tech Stack
 

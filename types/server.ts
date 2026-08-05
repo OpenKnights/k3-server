@@ -28,8 +28,8 @@ interface AppOptions extends H3Config {
 type AppInput = App | AppOptions
 
 /**
- * srvx server options managed by k3-server.
- * H3 provides the fetch handler and k3-server controls when listening starts.
+ * srvx server options managed by Katro.
+ * H3 provides the fetch handler and Katro controls when listening starts.
  */
 type ServerOptions = Omit<SrvxServerOptions, 'fetch' | 'manual'>
 
