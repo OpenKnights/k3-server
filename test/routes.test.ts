@@ -101,7 +101,7 @@ describe('routes', () => {
       const routes: Routes = { '/api': handler }
 
       expect(() => parseRoutes(routes)).toThrow(
-        `[katro] Handler configuration for GET /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
+        `[kaivo] Handler configuration for GET /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
       )
     })
 
@@ -180,7 +180,7 @@ describe('routes', () => {
       const routes: Routes = invalidRoutes
 
       expect(() => parseRoutes(routes)).toThrow(
-        `[katro] Handler configuration for GET /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
+        `[kaivo] Handler configuration for GET /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
       )
     })
 
@@ -196,7 +196,7 @@ describe('routes', () => {
       const routes: Routes = invalidRoutes
 
       expect(() => parseRoutes(routes)).toThrow(
-        `[katro] Handler configuration for GET /api cannot include route key "GET". Define children and HTTP methods at the route level instead.`
+        `[kaivo] Handler configuration for GET /api cannot include route key "GET". Define children and HTTP methods at the route level instead.`
       )
     })
 
@@ -216,7 +216,7 @@ describe('routes', () => {
       const routes: Routes = invalidRoutes
 
       expect(() => parseRoutes(routes)).toThrow(
-        `[katro] Handler configuration for POST /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
+        `[kaivo] Handler configuration for POST /api cannot include route key "children". Define children and HTTP methods at the route level instead.`
       )
     })
 
@@ -244,7 +244,7 @@ describe('routes', () => {
       const routes = { '/api': { GET: 'invalid' } } as unknown as Routes
 
       expect(() => parseRoutes(routes)).toThrow(
-        '[katro] Invalid route handler for GET /api.'
+        '[kaivo] Invalid route handler for GET /api.'
       )
     })
 
@@ -252,7 +252,7 @@ describe('routes', () => {
       const routes = { '/api': { children: null } } as unknown as Routes
 
       expect(() => parseRoutes(routes)).toThrow(
-        '[katro] Invalid children for route /api.'
+        '[kaivo] Invalid children for route /api.'
       )
     })
 
@@ -260,7 +260,7 @@ describe('routes', () => {
       const routes = { '/api': {} } as unknown as Routes
 
       expect(() => parseRoutes(routes)).toThrow(
-        '[katro] Invalid route configuration for /api.'
+        '[kaivo] Invalid route configuration for /api.'
       )
     })
 

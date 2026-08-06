@@ -135,7 +135,7 @@ describe('server', () => {
       const previousClose = previousRaw.close
 
       await expect(server.listen(9090)).rejects.toThrow(
-        '[katro] Server is already listening. Close it before listening again.'
+        '[kaivo] Server is already listening. Close it before listening again.'
       )
 
       expect(previousClose).not.toHaveBeenCalled()
@@ -162,10 +162,10 @@ describe('server', () => {
       const listening = server.listen()
 
       await expect(server.listen()).rejects.toThrow(
-        '[katro] Cannot listen while server is starting.'
+        '[kaivo] Cannot listen while server is starting.'
       )
       await expect(server.close()).rejects.toThrow(
-        '[katro] Cannot close while server is starting.'
+        '[kaivo] Cannot close while server is starting.'
       )
 
       resolveReady()
@@ -229,7 +229,7 @@ describe('server', () => {
       const server = createServer()
 
       await expect(server.listen()).rejects.toThrow(
-        '[katro] Server started without a listening URL.'
+        '[kaivo] Server started without a listening URL.'
       )
 
       expect(rawWithoutUrl.close).toHaveBeenCalledWith(true)
@@ -251,10 +251,10 @@ describe('server', () => {
       const closing = server.close()
 
       await expect(server.listen()).rejects.toThrow(
-        '[katro] Cannot listen while server is closing.'
+        '[kaivo] Cannot listen while server is closing.'
       )
       await expect(server.close()).rejects.toThrow(
-        '[katro] Cannot close while server is closing.'
+        '[kaivo] Cannot close while server is closing.'
       )
 
       resolveClose()
@@ -271,7 +271,7 @@ describe('server', () => {
 
       await expect(server.close()).rejects.toBe(closeError)
       await expect(server.listen()).rejects.toThrow(
-        '[katro] Server is already listening. Close it before listening again.'
+        '[kaivo] Server is already listening. Close it before listening again.'
       )
       expect(server.port).toBe(8080)
       expect(server.url).toContain('8080')

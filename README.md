@@ -2,7 +2,7 @@
 
 > A lightweight, TypeScript-first library built on [unjs/h3](https://github.com/unjs/h3) for quickly creating HTTP servers.
 
-[![npm version](https://img.shields.io/npm/v/katro.svg)](https://www.npmjs.com/package/katro)
+[![npm version](https://img.shields.io/npm/v/kaivo.svg)](https://www.npmjs.com/package/kaivo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [English](./README.md) | [中文](./README_zh.md)
@@ -18,7 +18,7 @@
 ## Installation
 
 ```bash
-npm install katro
+npm install kaivo
 ```
 
 Katro is ESM-only and requires Node.js 20.16 or newer.
@@ -26,7 +26,7 @@ Katro is ESM-only and requires Node.js 20.16 or newer.
 ## Quick Start
 
 ```typescript
-import { createServer } from 'katro'
+import { createServer } from 'kaivo'
 
 const server = createServer({
   routes: {
@@ -60,7 +60,7 @@ Use method keys for other HTTP methods, `ALL` to match every method, and
 `children` to group nested routes:
 
 ```typescript
-import { createServer } from 'katro'
+import { createServer } from 'kaivo'
 
 const server = createServer({
   routes: {
@@ -99,7 +99,7 @@ Use `defineRoutes()` for type inference when routes are declared separately.
 H3 route options are placed alongside `handler`:
 
 ```typescript
-import { defineRoutes } from 'katro'
+import { defineRoutes } from 'kaivo'
 
 const routes = defineRoutes({
   '/users': {
@@ -121,7 +121,7 @@ behavior.
 Pass middleware functions directly, or add a route and H3 middleware options:
 
 ```typescript
-import { createServer, defineMiddleware, defineMiddlewares } from 'katro'
+import { createServer, defineMiddleware, defineMiddlewares } from 'kaivo'
 
 const requestLogger = defineMiddleware(async (event, next) => {
   console.log(event.req.method, event.url.pathname)
@@ -189,7 +189,7 @@ The H3 app is exposed as `server.app`. Declarative configuration and native H3
 APIs can be used together before listening:
 
 ```typescript
-import { createApp, createServer } from 'katro'
+import { createApp, createServer } from 'kaivo'
 
 const app = createApp({
   routes: {
@@ -218,7 +218,7 @@ and close it during teardown. The default random port avoids conflicts between
 test workers:
 
 ```typescript
-import { createServer } from 'katro'
+import { createServer } from 'kaivo'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 
 const server = createServer({
@@ -264,7 +264,7 @@ vite.config.ts
 
 ```typescript
 // mock/routes.ts
-import { defineRoutes } from 'katro'
+import { defineRoutes } from 'kaivo'
 
 export const routes = defineRoutes({
   '/users': () => [{ id: 1, name: 'Alice' }]
@@ -278,13 +278,13 @@ Create a small Vite plugin that converts the H3 app into Node middleware:
 import type { Plugin } from 'vite'
 
 import { toNodeHandler } from 'h3/node'
-import { createApp } from 'katro'
+import { createApp } from 'kaivo'
 
 import { routes } from './routes'
 
-export function katroMock(): Plugin {
+export function kaivoMock(): Plugin {
   return {
-    name: 'katro-mock',
+    name: 'kaivo-mock',
     apply: 'serve',
 
     configureServer(viteServer) {
@@ -302,10 +302,10 @@ The Vite configuration only needs to enable the plugin:
 // vite.config.ts
 import { defineConfig } from 'vite'
 
-import { katroMock } from './mock/vite'
+import { kaivoMock } from './mock/vite'
 
 export default defineConfig({
-  plugins: [katroMock()]
+  plugins: [kaivoMock()]
 })
 ```
 

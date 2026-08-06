@@ -2,7 +2,7 @@
 
 > 一个基于 [unjs/h3](https://github.com/unjs/h3) 构建的轻量级 TypeScript 工具库，用于快速创建 HTTP 服务。
 
-[![npm version](https://img.shields.io/npm/v/katro.svg)](https://www.npmjs.com/package/katro)
+[![npm version](https://img.shields.io/npm/v/kaivo.svg)](https://www.npmjs.com/package/kaivo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [English](./README.md) | [中文](./README_zh.md)
@@ -18,7 +18,7 @@
 ## 安装
 
 ```bash
-npm install katro
+npm install kaivo
 ```
 
 Katro 仅提供 ESM 构建，需要 Node.js 20.16 或更高版本。
@@ -26,7 +26,7 @@ Katro 仅提供 ESM 构建，需要 Node.js 20.16 或更高版本。
 ## 快速开始
 
 ```typescript
-import { createServer } from 'katro'
+import { createServer } from 'kaivo'
 
 const server = createServer({
   routes: {
@@ -59,7 +59,7 @@ const server = createServer({
 组织嵌套路由：
 
 ```typescript
-import { createServer } from 'katro'
+import { createServer } from 'kaivo'
 
 const server = createServer({
   routes: {
@@ -98,7 +98,7 @@ const server = createServer({
 直接与 `handler` 平级：
 
 ```typescript
-import { defineRoutes } from 'katro'
+import { defineRoutes } from 'kaivo'
 
 const routes = defineRoutes({
   '/users': {
@@ -119,7 +119,7 @@ const routes = defineRoutes({
 可以直接传入 middleware，也可以为其指定路径和 H3 middleware options：
 
 ```typescript
-import { createServer, defineMiddleware, defineMiddlewares } from 'katro'
+import { createServer, defineMiddleware, defineMiddlewares } from 'kaivo'
 
 const requestLogger = defineMiddleware(async (event, next) => {
   console.log(event.req.method, event.url.pathname)
@@ -185,7 +185,7 @@ WebSocket 都属于 H3 或 Web 平台能力，可以直接参考 H3 文档：
 可以同时使用：
 
 ```typescript
-import { createApp, createServer } from 'katro'
+import { createApp, createServer } from 'kaivo'
 
 const app = createApp({
   routes: {
@@ -212,7 +212,7 @@ plugins 属于 srvx Server。Katro 重新导出了 H3 的 `definePlugin()`，插
 测试结束后关闭。默认随机端口可以避免不同测试进程之间发生端口冲突：
 
 ```typescript
-import { createServer } from 'katro'
+import { createServer } from 'kaivo'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 
 const server = createServer({
@@ -258,7 +258,7 @@ vite.config.ts
 
 ```typescript
 // mock/routes.ts
-import { defineRoutes } from 'katro'
+import { defineRoutes } from 'kaivo'
 
 export const routes = defineRoutes({
   '/users': () => [{ id: 1, name: 'Alice' }]
@@ -272,13 +272,13 @@ export const routes = defineRoutes({
 import type { Plugin } from 'vite'
 
 import { toNodeHandler } from 'h3/node'
-import { createApp } from 'katro'
+import { createApp } from 'kaivo'
 
 import { routes } from './routes'
 
-export function katroMock(): Plugin {
+export function kaivoMock(): Plugin {
   return {
-    name: 'katro-mock',
+    name: 'kaivo-mock',
     apply: 'serve',
 
     configureServer(viteServer) {
@@ -296,10 +296,10 @@ Vite 配置只需要启用该插件：
 // vite.config.ts
 import { defineConfig } from 'vite'
 
-import { katroMock } from './mock/vite'
+import { kaivoMock } from './mock/vite'
 
 export default defineConfig({
-  plugins: [katroMock()]
+  plugins: [kaivoMock()]
 })
 ```
 

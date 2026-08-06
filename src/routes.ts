@@ -88,7 +88,7 @@ function parseRouteHandler(
 
     if (conflict !== undefined) {
       throw new TypeError(
-        `[katro] Handler configuration for ${method} ${route} cannot include route key "${conflict}". Define children and HTTP methods at the route level instead.`
+        `[kaivo] Handler configuration for ${method} ${route} cannot include route key "${conflict}". Define children and HTTP methods at the route level instead.`
       )
     }
   }
@@ -140,7 +140,7 @@ function parseRoutes(routes: Routes, basePath = ''): ParsedRoute[] {
 
         if (!isRouteHandler(methodConfig)) {
           throw new TypeError(
-            `[katro] Invalid route handler for ${method} ${fullPath}.`
+            `[kaivo] Invalid route handler for ${method} ${fullPath}.`
           )
         }
 
@@ -150,14 +150,14 @@ function parseRoutes(routes: Routes, basePath = ''): ParsedRoute[] {
       // Recursively process child routes
       if (config.children !== undefined) {
         if (!isObject(config.children)) {
-          throw new TypeError(`[katro] Invalid children for route ${fullPath}.`)
+          throw new TypeError(`[kaivo] Invalid children for route ${fullPath}.`)
         }
 
         parsedRoutes.push(...parseRoutes(config.children, fullPath))
       }
     } else {
       throw new TypeError(
-        `[katro] Invalid route configuration for ${fullPath}.`
+        `[kaivo] Invalid route configuration for ${fullPath}.`
       )
     }
   }

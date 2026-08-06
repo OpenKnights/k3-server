@@ -62,11 +62,11 @@ function createServer(
     listen: async (listenPort?: number): Promise<Server> => {
       if (state === 'listening') {
         throw new Error(
-          '[katro] Server is already listening. Close it before listening again.'
+          '[kaivo] Server is already listening. Close it before listening again.'
         )
       }
       if (state !== 'idle') {
-        throw new Error(`[katro] Cannot listen while server is ${state}.`)
+        throw new Error(`[kaivo] Cannot listen while server is ${state}.`)
       }
 
       const targetPort = listenPort ?? port
@@ -85,7 +85,7 @@ function createServer(
         await raw.ready()
 
         if (!raw.url) {
-          throw new Error('[katro] Server started without a listening URL.')
+          throw new Error('[kaivo] Server started without a listening URL.')
         }
 
         const rawUrl = new URL(raw.url)
@@ -122,7 +122,7 @@ function createServer(
      */
     close: async (): Promise<void> => {
       if (state === 'starting' || state === 'closing') {
-        throw new Error(`[katro] Cannot close while server is ${state}.`)
+        throw new Error(`[kaivo] Cannot close while server is ${state}.`)
       }
       if (state === 'idle') {
         resetServerState(server)
@@ -179,7 +179,7 @@ function resolveServerPort(url: URL): number {
     return 443
   }
 
-  throw new Error(`[katro] Unsupported server protocol: ${url.protocol}`)
+  throw new Error(`[kaivo] Unsupported server protocol: ${url.protocol}`)
 }
 
 /**
