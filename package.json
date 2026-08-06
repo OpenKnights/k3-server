@@ -1,5 +1,5 @@
 {
-  "name": "katro",
+  "name": "kervx",
   "type": "module",
   "version": "2.1.0",
   "description": "A lightweight, TypeScript-first library built on unjs/h3 for quickly creating HTTP servers.",
