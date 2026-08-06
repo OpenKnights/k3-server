@@ -59,7 +59,6 @@
   "devDependencies": {
     "@king3/eslint-config": "^7.1.1",
     "@king3/prettier-config": "^2.1.1",
-    "@prettier/plugin-oxc": "^0.2.2",
     "@types/node": "^26.1.2",
     "bumpp": "^12.1.1",
     "eslint": "^10.8.0",
