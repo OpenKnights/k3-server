@@ -5,13 +5,13 @@
   "description": "A lightweight, TypeScript-first library built on unjs/h3 for quickly creating HTTP servers.",
   "author": "king3 <king3.wm@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/OpenKnights/katro#readme",
+  "homepage": "https://github.com/OpenKnights/kaivo#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OpenKnights/katro.git"
+    "url": "git+https://github.com/OpenKnights/kaivo.git"
   },
   "bugs": {
-    "url": "https://github.com/OpenKnights/katro/issues"
+    "url": "https://github.com/OpenKnights/kaivo/issues"
   },
   "keywords": [
     "http",

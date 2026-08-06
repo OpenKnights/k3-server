@@ -1,4 +1,4 @@
-# Katro
+# Kaivo
 
 > 一个基于 [unjs/h3](https://github.com/unjs/h3) 构建的轻量级 TypeScript 工具库，用于快速创建 HTTP 服务。
 
@@ -21,7 +21,7 @@
 npm install kaivo
 ```
 
-Katro 仅提供 ESM 构建，需要 Node.js 20.16 或更高版本。
+Kaivo 仅提供 ESM 构建，需要 Node.js 20.16 或更高版本。
 
 ## 快速开始
 
@@ -154,12 +154,12 @@ const routes = {
 }
 ```
 
-Katro 重新导出了 H3 的 `defineMiddleware()`。middleware 执行语义和生命周期
+Kaivo 重新导出了 H3 的 `defineMiddleware()`。middleware 执行语义和生命周期
 工具可以参考 [H3 Middleware 文档](https://h3.dev/guide/basics/middleware)。
 
 ## H3 集成
 
-Katro 的 route handler 就是原生 H3 handler，可以返回 JavaScript 值或 Web
+Kaivo 的 route handler 就是原生 H3 handler，可以返回 JavaScript 值或 Web
 `Response`，也可以直接使用 H3 工具：
 
 ```typescript
@@ -201,7 +201,7 @@ await server.listen()
 
 `AppOptions` 扩展自 H3 的 `H3Config`，因此可以向 `createApp()` 传入 H3 原生
 配置。`createServer()` 第一个参数中的 plugins 属于 H3 App，第二个参数中的
-plugins 属于 srvx Server。Katro 重新导出了 H3 的 `definePlugin()`，插件行为
+plugins 属于 srvx Server。Kaivo 重新导出了 H3 的 `definePlugin()`，插件行为
 可以参考 [H3 Plugins 文档](https://h3.dev/guide/advanced/plugins)。
 
 ## 常见使用场景
@@ -243,7 +243,7 @@ Jest 可以使用相同的 `beforeAll()` 和 `afterAll()` 模式；使用 `node:
 
 ### 模拟后端接口
 
-Katro 可以通过真实 HTTP 模拟后端接口。在 Vite 中，可以将 H3 App 直接挂载到
+Kaivo 可以通过真实 HTTP 模拟后端接口。在 Vite 中，可以将 H3 App 直接挂载到
 开发服务器的 middleware 链，让前端页面与 Mock API 共享同一个来源，无需额外
 端口或 Proxy。
 
@@ -304,7 +304,7 @@ export default defineConfig({
 ```
 
 前端现在可以直接通过 Vite 地址请求 `/api/users`。Connect 会在调用 H3 前移除
-挂载路径 `/api`，因此对应的 Katro route 是 `/users`。
+挂载路径 `/api`，因此对应的 Kaivo route 是 `/users`。
 
 使用 Vite 默认配置加载器时，`mock/vite.ts` 及其静态导入的 `mock/routes.ts`
 都会成为配置依赖。修改任一文件都会重启开发服务器并创建新的 H3 App。
@@ -313,14 +313,14 @@ export default defineConfig({
 
 `toNodeHandler()` 来自
 [H3 Node adapter](https://h3.dev/utils/more)。对于 webpack-dev-server 和其他
-工具，也可以将相同 routes 用于独立 Katro Server，再通过 HTTP Proxy 访问。
+工具，也可以将相同 routes 用于独立 Kaivo Server，再通过 HTTP Proxy 访问。
 具体可以参考
 [webpack-dev-server Proxy 配置](https://webpack.js.org/configuration/dev-server/#devserverproxy)。
 
 ### 独立服务与端到端测试
 
-当 Postman、移动端或桌面端应用、SDK 测试或 CI 任务需要访问 Katro 时，可以
-为其配置固定端口。Playwright、Cypress 等端到端测试工具也可以将 Katro 入口
+当 Postman、移动端或桌面端应用、SDK 测试或 CI 任务需要访问 Kaivo 时，可以
+为其配置固定端口。Playwright、Cypress 等端到端测试工具也可以将 Kaivo 入口
 文件作为依赖进程启动，并在测试结束后关闭。
 
 ## Server 生命周期

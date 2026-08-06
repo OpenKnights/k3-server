@@ -1,4 +1,4 @@
-# Katro
+# Kaivo
 
 > A lightweight, TypeScript-first library built on [unjs/h3](https://github.com/unjs/h3) for quickly creating HTTP servers.
 
@@ -21,7 +21,7 @@
 npm install kaivo
 ```
 
-Katro is ESM-only and requires Node.js 20.16 or newer.
+Kaivo is ESM-only and requires Node.js 20.16 or newer.
 
 ## Quick Start
 
@@ -156,13 +156,13 @@ const routes = {
 }
 ```
 
-Katro re-exports H3's `defineMiddleware()`. See the
+Kaivo re-exports H3's `defineMiddleware()`. See the
 [H3 middleware guide](https://h3.dev/guide/basics/middleware) for execution
 semantics and lifecycle utilities.
 
 ## H3 Integration
 
-Katro route handlers are native H3 handlers. You can return JavaScript values
+Kaivo route handlers are native H3 handlers. You can return JavaScript values
 or Web `Response` objects and use H3 utilities directly:
 
 ```typescript
@@ -205,7 +205,7 @@ await server.listen()
 
 `AppOptions` extends H3's `H3Config`, so native H3 configuration can be passed
 to `createApp()`. H3 app plugins belong in the first argument to
-`createServer()`; srvx server plugins belong in the second argument. Katro
+`createServer()`; srvx server plugins belong in the second argument. Kaivo
 re-exports H3's `definePlugin()` for convenience. See the
 [H3 plugin guide](https://h3.dev/guide/advanced/plugins) for plugin behavior.
 
@@ -249,7 +249,7 @@ use its `before()` and `after()` hooks. See the setup documentation for
 
 ### Mocking Backend APIs
 
-Katro can simulate backend APIs over real HTTP. With Vite, mount the H3 app
+Kaivo can simulate backend APIs over real HTTP. With Vite, mount the H3 app
 directly into the development server's middleware stack so the frontend and
 mock APIs share the same origin without another port or proxy.
 
@@ -310,7 +310,7 @@ export default defineConfig({
 ```
 
 The frontend can now request `/api/users` from the Vite origin. Connect removes
-the `/api` mount prefix before invoking H3, so the corresponding Katro route is
+the `/api` mount prefix before invoking H3, so the corresponding Kaivo route is
 `/users`.
 
 With Vite's default config loader, `mock/vite.ts` and its statically imported
@@ -321,15 +321,15 @@ not detect imported config dependencies; see
 
 `toNodeHandler()` comes from the
 [H3 Node adapter](https://h3.dev/utils/more). With webpack-dev-server and other
-tools, the same routes can instead be used with a standalone Katro server and
+tools, the same routes can instead be used with a standalone Kaivo server and
 an HTTP proxy. See the
 [webpack-dev-server proxy options](https://webpack.js.org/configuration/dev-server/#devserverproxy).
 
 ### Standalone and End-to-End Usage
 
-Use a fixed port when Katro is consumed by Postman, mobile or desktop
+Use a fixed port when Kaivo is consumed by Postman, mobile or desktop
 applications, SDK tests, or CI jobs. End-to-end tools such as Playwright and
-Cypress can start the Katro entry file as a dependent process and stop it
+Cypress can start the Kaivo entry file as a dependent process and stop it
 after the test run.
 
 ## Server Lifecycle

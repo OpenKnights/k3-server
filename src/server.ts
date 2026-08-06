@@ -183,7 +183,7 @@ function resolveServerPort(url: URL): number {
 }
 
 /**
- * Removes srvx options controlled internally by H3 and Katro.
+ * Removes srvx options controlled internally by H3 and Kaivo.
  * Runtime filtering is required because extra properties can bypass Omit types.
  */
 function filterServerOptions(options: ServerOptions): ServerOptions {

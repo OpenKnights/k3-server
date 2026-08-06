@@ -1,4 +1,4 @@
-# AGENTS.md — Katro
+# AGENTS.md — Kaivo
 
 ## Project Overview
 

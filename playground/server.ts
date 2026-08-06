@@ -67,7 +67,7 @@ const playgroundPlugin = definePlugin((app) => {
 const routes = defineRoutes({
   // A direct handler is registered as GET by default.
   '/': () => ({
-    name: 'Katro playground',
+    name: 'Kaivo playground',
     endpoints: [
       'GET /api/hello',
       'POST /api/hello',
@@ -168,7 +168,7 @@ const method = (name: string, color: string) =>
   `${ansi.bold}${color}${name.padEnd(5)}${ansi.reset}`
 
 console.log(`
-${ansi.bold}${ansi.green}╭─ Katro playground${ansi.reset}
+${ansi.bold}${ansi.green}╭─ Kaivo playground${ansi.reset}
 ${ansi.green}│${ansi.reset}  ${ansi.dim}Listening on${ansi.reset}  ${ansi.cyan}${server.url}${ansi.reset}
 ${ansi.green}╰─ Ready${ansi.reset}
 
